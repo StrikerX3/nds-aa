@@ -248,8 +248,15 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     std::cout << "Testing " << name << " slopes... ";
 
     bool mismatch = false;
-    for (i32 y = data.minY; y <= data.maxY; y++) {
+    /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
+            testSlope(data, x, y, mismatch);
+        }
+    }*/
+
+    // All X-major slopes for TOP test, except Y=0
+    for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
+        for (i32 x = y + 1; x <= data.maxX; x++) {
             testSlope(data, x, y, mismatch);
         }
     }
