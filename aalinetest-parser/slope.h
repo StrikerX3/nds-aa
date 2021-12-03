@@ -401,7 +401,8 @@ public:
             const i32 coverageStep = fullCoverage / deltaX;
             const i32 coverageBias = coverageStep / 2;
             const i32 offset = x - startX;
-            const i32 fracCoverage = baseCoverage + fullCoverage - (deltaX - offset) * coverageStep;
+            // const i32 fracCoverage = baseCoverage + fullCoverage - (deltaX - offset) * coverageStep;
+            const i32 fracCoverage = baseCoverage + offset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAABaseX;
             return finalCoverage;
         } else {
