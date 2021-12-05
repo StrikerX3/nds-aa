@@ -209,7 +209,7 @@ struct Operation {
         }
     }
 
-    [[gnu::flatten]] bool Execute(Context &ctx) {
+    /*[[gnu::flatten]]*/ bool Execute(Context &ctx) {
         switch (type) {
         case Type::Operator: return ExecuteOperator(ctx);
         case Type::Constant: return ExecuteConstant(ctx);
@@ -327,14 +327,14 @@ private:
 
         case Operator::FracXStart: {
             i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
-            stack.push_back(Slope::kBias + dx);
+            i32 dx = divResult * ctx.vars.width;
+            stack.push_back(Slope::kBias + ctx.vars.y * dx);
             return true;
         }
         case Operator::FracXEnd: {
             i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
-            i32 fracStart = Slope::kBias + dx;
+            i32 dx = divResult * ctx.vars.width;
+            i32 fracStart = Slope::kBias + ctx.vars.y * dx;
             stack.push_back((fracStart & Slope::kMask) + dx - Slope::kOne);
             return true;
         }
@@ -347,22 +347,22 @@ private:
 
         case Operator::XStart: {
             i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
-            stack.push_back((Slope::kBias + dx) >> Slope::kFracBits);
+            i32 dx = divResult * ctx.vars.width;
+            stack.push_back((Slope::kBias + ctx.vars.y * dx) >> Slope::kFracBits);
             return true;
         }
         case Operator::XEnd: {
             i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
-            i32 fracStart = Slope::kBias + dx;
+            i32 dx = divResult * ctx.vars.width;
+            i32 fracStart = Slope::kBias + ctx.vars.y * dx;
             stack.push_back(((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits);
             return true;
         }
 
         case Operator::XWidth: {
             i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
-            i32 fracStart = Slope::kBias + dx;
+            i32 dx = divResult * ctx.vars.width;
+            i32 fracStart = Slope::kBias + ctx.vars.y * dx;
             i32 xStart = fracStart >> Slope::kFracBits;
             i32 xEnd = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
             stack.push_back(xEnd - xStart + 1);

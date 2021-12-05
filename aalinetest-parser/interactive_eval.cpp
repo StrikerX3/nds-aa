@@ -257,10 +257,12 @@ void evaluate(InteractiveEvaluator &eval, Group group) {
     bool hasEntries = false;
     bool valid = eval.Eval(group, [&](const DataPoint &dataPoint, i32 result) {
         hasEntries = true;
-        if (result != dataPoint.expectedOutput && mismatches.size() < 10) {
-            mismatches.push_back(Output{dataPoint, result});
+        if (result != dataPoint.expectedOutput) {
+            if (mismatches.size() < 10) {
+                mismatches.push_back(Output{dataPoint, result});
+            }
+            mismatchCount++;
         }
-        mismatchCount++;
         totalError += std::abs(result - dataPoint.expectedOutput);
     });
 
@@ -296,10 +298,15 @@ void evaluate(InteractiveEvaluator &eval, Group group, i32 width, i32 height) {
     bool hasEntries = false;
     bool valid = eval.Eval(group, width, height, [&](const DataPoint &dataPoint, i32 result) {
         hasEntries = true;
-        std::cout << "  " << dataPoint.KeyStr() << "  ->  " << result
-                  << ((result == dataPoint.expectedOutput) ? " == " : " != ") << dataPoint.expectedOutput << "\n";
-        mismatchCount++;
-        totalError += std::abs(result - dataPoint.expectedOutput);
+        std::cout << "  " << dataPoint.KeyStr() << "  ->  " << result;
+        if (result != dataPoint.expectedOutput) {
+            std::cout << " != " << dataPoint.expectedOutput;
+        }
+        std::cout << "\n";
+        if (result != dataPoint.expectedOutput) {
+            mismatchCount++;
+            totalError += std::abs(result - dataPoint.expectedOutput);
+        }
     });
 
     if (valid) {
@@ -426,7 +433,7 @@ void displayStepEvalState(InteractiveEvaluator &eval) {
     }
 }
 
-bool stepEval(InteractiveEvaluator &eval) {
+bool stepBegin(InteractiveEvaluator &eval) {
     if (eval.StepEval()) {
         std::cout << eval.StepEvalOperations()[eval.StepEvalIndex() - 1].Str() << " =>";
         for (auto num : eval.StepEvalStack()) {
@@ -481,7 +488,7 @@ void info(InteractiveContext &ctx, const std::vector<std::string> &args) {
     }
 }
 
-void stepEval(InteractiveContext &ctx, const std::vector<std::string> &args) {
+void stepBegin(InteractiveContext &ctx, const std::vector<std::string> &args) {
     using util::parseNum;
 
     if (args.size() < 5) {
@@ -503,6 +510,7 @@ void stepEval(InteractiveContext &ctx, const std::vector<std::string> &args) {
         }
         std::cout << "Starting evaluation of data point " << width << "x" << height << " @ " << x << "x" << y
                   << " of group " << GroupName(group) << "\n";
+        util::displayStepEvalState(ctx.eval);
     } else {
         std::cout << "Invalid group: \"" << GroupName(group) << "\"\n";
     }
@@ -512,7 +520,7 @@ void stepNext(InteractiveContext &ctx, const std::vector<std::string> &args) {
     using util::parseNum;
 
     if (!ctx.eval.IsStepping()) {
-        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        std::cout << "Not running a step-by-step evaluation. Use the \"stepbegin\" command to start.\n";
         return;
     }
 
@@ -528,7 +536,7 @@ void stepNext(InteractiveContext &ctx, const std::vector<std::string> &args) {
     }
 
     for (i32 i = 0; i < count; i++) {
-        if (!util::stepEval(ctx.eval)) {
+        if (!util::stepBegin(ctx.eval)) {
             break;
         }
     }
@@ -541,12 +549,12 @@ void stepGo(InteractiveContext &ctx, const std::vector<std::string> &args) {
     using util::parseNum;
 
     if (!ctx.eval.IsStepping()) {
-        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        std::cout << "Not running a step-by-step evaluation. Use the \"stepbegin\" command to start.\n";
         return;
     }
 
     for (;;) {
-        if (!util::stepEval(ctx.eval)) {
+        if (!util::stepBegin(ctx.eval)) {
             break;
         }
     }
@@ -557,24 +565,25 @@ void stepGo(InteractiveContext &ctx, const std::vector<std::string> &args) {
 
 void stepReset(InteractiveContext &ctx, const std::vector<std::string> &args) {
     if (!ctx.eval.IsStepping()) {
-        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        std::cout << "Not running a step-by-step evaluation. Use the \"stepbegin\" command to start.\n";
         return;
     }
     ctx.eval.StepEvalReset();
     std::cout << "Step-by-step evaluation reset.\n";
+    util::displayStepEvalState(ctx.eval);
 }
 
 void stepState(InteractiveContext &ctx, const std::vector<std::string> &args) {
     if (!ctx.eval.IsStepping()) {
-        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        std::cout << "Not running a step-by-step evaluation. Use the \"stepbegin\" command to start.\n";
         return;
     }
     util::displayStepEvalState(ctx.eval);
 }
 
-void stepCancel(InteractiveContext &ctx, const std::vector<std::string> &args) {
+void stepEnd(InteractiveContext &ctx, const std::vector<std::string> &args) {
     if (!ctx.eval.IsStepping()) {
-        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        std::cout << "Not running a step-by-step evaluation. Use the \"stepbegin\" command to start.\n";
         return;
     }
     ctx.eval.StepEvalCancel();
@@ -747,7 +756,7 @@ void save(InteractiveContext &ctx, const std::vector<std::string> &args) {
     for (auto &op : ops) {
         out << op.Str() << " ";
     }
-    std::cout << "Formula saved to \"" << args[0] << "\"\n";
+    std::cout << "Formula saved to " << path << "\n";
 }
 
 void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -764,6 +773,15 @@ void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
         path = args[0];
     }
 
+    if (!std::filesystem::exists(path)) {
+        std::cout << "File not found: " << path << "\n";
+        return;
+    }
+    if (!std::filesystem::is_regular_file(path)) {
+        std::cout << "Not a regular file: " << path << "\n";
+        return;
+    }
+
     auto &ops = ctx.eval.Operations();
     ops.clear();
     std::ifstream in{path};
@@ -772,9 +790,9 @@ void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
         auto op = Lowercase(opStr);
         parseAndAddOp(ops, op);
     }
-    std::cout << "Formula loaded from \"" << args[0] << "\"\n";
+    std::cout << "Formula loaded from " << path << "\n";
     util::displayFormula(ops, "   ");
-    ctx.lastLoadedFormulaPath = args[0];
+    ctx.lastLoadedFormulaPath = path;
 }
 
 void dump(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -820,32 +838,16 @@ void initCommands() {
     };
 
     add({"q", "exit", "quit"}, command::quit, "Quits the interactive evaluator.");
+
     add({"h", "help"}, command::help, "Displays this help text.");
     add({"i", "info"}, command::info, "Displays evaluator information.");
-    add({"se", "stepeval"}, command::stepEval,
-        "Begins evaluating the current formula in step-by-step mode.\n"
-        "  Arguments: group width height x y\n"
+    add({"dump"}, command::dump,
+        "Dumps a portion of the data set.\n"
+        "  Arguments: group width height\n"
         "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
-        "    width, height, x, y: specify a data point from the group");
-    add({"n", "next"}, command::stepNext,
-        "Runs the next operation in the current step-by-step evaluation.\n"
-        "  Arguments: [count = 1]\n"
-        "    count: number of operations to execute.\n");
-    add({"g", "go"}, command::stepGo, "Runs the step-by-step evaluation until the end of the formula.");
-    add({"r", "reset"}, command::stepReset,
-        "Resets the step-by-step evaluation to the beginning and transfers the current formula to it.");
-    add({"s", "state"}, command::stepState, "Displays the current state of the step-by-step evaluation.");
-    add({"c", "cancel"}, command::stepCancel, "Cancels the current step-by-step evaluation.");
-    add({"e", "eval"}, command::eval,
-        "Evaluates the current formula against the entire data set or a subset.\n"
-        "  Arguments: [group] [width height] [group [width height] ...]\n"
-        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
-        "    width and height: specify the size of the slope to evaluate.\n"
-        "  If executed without arguments, evaluates all groups and dumps the first ten mismatches of each group.\n"
-        "  If executed with the group argument, evaluates that group and dumps the first ten mismatches.\n"
-        "  If executed with all arguments, evaluates that specific slope size and dumps all results.\n"
-        "  Multiple data set may be evaluated by passing additional groups and optional slope sizes.\n");
-    add({"f", "fn", "func"}, command::func, "Displays the current formula.");
+        "    width and height: size of the slope to dump");
+
+    add({"f", "fm", "formula"}, command::func, "Displays the current formula's operations.");
     add({"addop"}, command::addOp,
         "Adds one or more operations to the formula.\n"
         "  Arguments: op [op ...] [pos = -1]\n"
@@ -857,23 +859,44 @@ void initCommands() {
         "    pos: first operation to remove\n"
         "    count: number of operations to remove");
     add({"clear"}, command::clear, "Clears the formula (erases all operations).");
-    add({"save"}, command::save,
+
+    add({"e", "eval"}, command::eval,
+        "Evaluates the current formula against the entire data set or a subset.\n"
+        "  Arguments: [group] [width height] [group [width height] ...]\n"
+        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
+        "    width and height: specify the size of the slope to evaluate.\n"
+        "  If executed without arguments, evaluates all groups and dumps the first ten mismatches of each group.\n"
+        "  If executed with the group argument, evaluates that group and dumps the first ten mismatches.\n"
+        "  If executed with all arguments, evaluates that specific slope size and dumps all results.\n"
+        "  Multiple data sets may be evaluated by passing additional groups and optional slope sizes.\n");
+
+    add({"s", "save"}, command::save,
         "Saves the current formula to a file.\n"
         "  Arguments: path\n"
         "    path: path to the file where the formula will be saved.\n"
         "  The path may be omitted if a formula was loaded with \"load\".\n"
         "  If omitted, the formula will be saved to the last loaded file.");
-    add({"load"}, command::load,
+    add({"l", "load"}, command::load,
         "Loads a formula from a file.\n"
         "  Arguments: path\n"
         "    path: path to the file where the formula will be loaded\n"
         "  The path may be omitted if a formula was loaded with this command.\n"
         "  If omitted, the command will reload the formula from the last loaded file, if any.");
-    add({"dump"}, command::dump,
-        "Dumps a portion of the data set.\n"
-        "  Arguments: group width height\n"
+
+    add({"sb", "stepbegin"}, command::stepBegin,
+        "Begins evaluating the current formula in step-by-step mode.\n"
+        "  Arguments: group width height x y\n"
         "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
-        "    width and height: size of the slope to dump");
+        "    width, height, x, y: specify a data point from the group");
+    add({"se", "stepend"}, command::stepEnd, "Ends the current step-by-step evaluation.");
+    add({"sn", "stepnext"}, command::stepNext,
+        "Runs the next operation in the current step-by-step evaluation.\n"
+        "  Arguments: [count = 1]\n"
+        "    count: number of operations to execute.\n");
+    add({"sg", "stepgo"}, command::stepGo, "Runs the step-by-step evaluation until the end of the formula.");
+    add({"sr", "stepreset"}, command::stepReset,
+        "Resets the step-by-step evaluation to the beginning and transfers the current formula to it.");
+    add({"ss", "stepstate"}, command::stepState, "Displays the current state of the step-by-step evaluation.");
 }
 
 struct CommandLine {

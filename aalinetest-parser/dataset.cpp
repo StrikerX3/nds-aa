@@ -200,6 +200,7 @@ std::vector<DataPoint> loadOne(std::filesystem::path file) {
         return lhs.y < rhs.y;
     });
 
+    dataset.shrink_to_fit();
     return dataset;
 }
 
