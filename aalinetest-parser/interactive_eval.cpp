@@ -225,12 +225,24 @@ struct InteractiveContext {
 
 using FnCommand = void (*)(InteractiveContext &ctx, const std::vector<std::string> &args);
 
-struct Command {
-    FnCommand func;
+struct CommandDesc {
+    std::vector<std::string> aliases;
     std::string description;
+
+    std::string BuildAliases() {
+        std::ostringstream os;
+        std::string sep = "";
+        for (auto &alias : aliases) {
+            os << sep << alias;
+            sep = ", ";
+        }
+        return os.str();
+    }
 };
 
-std::map<std::string, Command> commands;
+std::map<std::string, FnCommand> commandFns;
+std::vector<CommandDesc> commands;
+size_t longestCommand;
 
 namespace util {
 
@@ -249,6 +261,65 @@ void displayFunc(const std::vector<Operation> &ops, std::string marker = "", siz
     }
 }
 
+bool parseNum(const std::string &arg, i32 &output) {
+    try {
+        output = std::stoi(arg);
+        return true;
+    } catch (...) {
+        std::cout << "Not a number: \"" << arg << "\"\n";
+        return false;
+    }
+}
+
+void displayStepEvalResult(InteractiveEvaluator &eval) {
+    auto dataPoint = eval.StepEvalDataPoint();
+    if (i32 result; eval.StepEvalResult(result)) {
+        std::cout << "Result: " << result;
+        if (result == dataPoint.expectedOutput) {
+            std::cout << " == ";
+        } else {
+            std::cout << " != ";
+        }
+        std::cout << dataPoint.expectedOutput;
+        std::cout << "\n";
+    } else {
+        std::cout << "Stack is empty; no result available\n";
+    }
+}
+
+void displayStepEvalState(InteractiveEvaluator &eval) {
+    auto dataPoint = eval.StepEvalDataPoint();
+    std::cout << "Step-by-step evaluator state:\n";
+    std::cout << "  Evaluating data point " << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x"
+              << dataPoint.y << " of group " << GroupName(eval.StepEvalGroup()) << "\n";
+    std::cout << "Operations:\n";
+    util::displayFunc(eval.StepEvalOperations(), "=> ", eval.StepEvalIndex(), eval.StepEvalIndex() + 1);
+    std::cout << "Stack:\n";
+    size_t i = 0;
+    for (auto num : eval.StepEvalStack()) {
+        std::cout << "   " << i << ": " << num << "\n";
+        i++;
+    }
+    if (i32 result; eval.StepEvalResult(result)) {
+        std::cout << "Current  result: " << result << "\n";
+        std::cout << "Expected result: " << dataPoint.expectedOutput << "\n";
+    }
+}
+
+bool stepEval(InteractiveEvaluator &eval) {
+    if (eval.StepEval()) {
+        std::cout << eval.StepEvalOperations()[eval.StepEvalIndex() - 1].Str() << " =>";
+        for (auto num : eval.StepEvalStack()) {
+            std::cout << " " << num;
+        }
+        std::cout << "\n";
+        return true;
+    } else {
+        std::cout << "Reached the end of the function.\n";
+        return false;
+    }
+}
+
 } // namespace util
 
 namespace command {
@@ -258,28 +329,32 @@ void quit(InteractiveContext &ctx, const std::vector<std::string> &) {
 }
 
 void help(InteractiveContext &, const std::vector<std::string> &) {
-    for (auto &[cmd, desc] : commands) {
-        std::cout << cmd << " - " << desc.description << "\n";
+    std::cout << "Available commands:\n";
+    for (auto &cmd : commands) {
+        std::cout << "  " << std::setw(longestCommand) << cmd.BuildAliases() << "    ";
+        std::string line;
+        std::istringstream in{cmd.description};
+        bool firstLine = true;
+        while (std::getline(in, line)) {
+            if (!firstLine) {
+                std::cout << std::setw(longestCommand + 4 + 2) << " ";
+            } else {
+                firstLine = false;
+            }
+            std::cout << line << "\n";
+        }
     }
 }
 
 void stepEval(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    using util::parseNum;
+
     if (args.size() < 5) {
         std::cout << "Missing arguments\n";
         std::cout << "Usage: eval group width height x y\n";
         std::cout << "  group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY\n";
         return;
     }
-
-    auto parseNum = [&](const std::string &arg, i32 &output) -> bool {
-        try {
-            output = std::stoi(arg);
-            return true;
-        } catch (...) {
-            std::cout << "Not a number: \"" << arg << "\"\n";
-            return false;
-        }
-    };
 
     if (Group group; GroupFromName(args[0], group)) {
         i32 width, height, x, y;
@@ -299,40 +374,50 @@ void stepEval(InteractiveContext &ctx, const std::vector<std::string> &args) {
 }
 
 void stepNext(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    using util::parseNum;
+
     if (!ctx.eval.IsStepping()) {
         std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
         return;
     }
-    if (ctx.eval.StepEval()) {
-        std::cout << ctx.eval.StepEvalOperations()[ctx.eval.StepEvalIndex() - 1].Str() << " =>";
-        for (auto num : ctx.eval.StepEvalStack()) {
-            std::cout << " " << num;
+
+    i32 count = 1;
+    if (args.size() >= 1) {
+        if (!parseNum(args[0], count)) {
+            return;
         }
-        std::cout << "\n";
-    } else {
-        std::cout << "Reached the end of the function.\n";
     }
-    if (i32 result; ctx.eval.StepEvalResult(result)) {
-        std::cout << "Result: " << result << "\n";
-    } else {
-        std::cout << "Stack is empty; no result available\n";
+    if (count < 1) {
+        std::cout << "Invalid operation count; must be a positive number.\n";
+        return;
     }
 
-    auto dataPoint = ctx.eval.StepEvalDataPoint();
-    std::cout << "Step-by-step evaluator state:\n";
-    std::cout << "  Evaluating data point " << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x"
-              << dataPoint.y << " of group " << GroupName(ctx.eval.StepEvalGroup()) << "\n";
-    std::cout << "Operations:\n";
-    util::displayFunc(ctx.eval.StepEvalOperations(), "=> ", ctx.eval.StepEvalIndex(), ctx.eval.StepEvalIndex() + 1);
-    std::cout << "Stack:\n";
-    size_t i = 0;
-    for (auto num : ctx.eval.StepEvalStack()) {
-        std::cout << "   " << i << ": " << num << "\n";
-        i++;
+    for (i32 i = 0; i < count; i++) {
+        if (!util::stepEval(ctx.eval)) {
+            break;
+        }
     }
-    if (i32 result; ctx.eval.StepEvalResult(result)) {
-        std::cout << "Current result: " << result << "\n";
+
+    util::displayStepEvalResult(ctx.eval);
+    util::displayStepEvalState(ctx.eval);
+}
+
+void stepGo(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    using util::parseNum;
+
+    if (!ctx.eval.IsStepping()) {
+        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        return;
     }
+
+    for (;;) {
+        if (!util::stepEval(ctx.eval)) {
+            break;
+        }
+    }
+
+    util::displayStepEvalResult(ctx.eval);
+    util::displayStepEvalState(ctx.eval);
 }
 
 void stepReset(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -349,21 +434,7 @@ void stepState(InteractiveContext &ctx, const std::vector<std::string> &args) {
         std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
         return;
     }
-    auto dataPoint = ctx.eval.StepEvalDataPoint();
-    std::cout << "Step-by-step evaluator state:\n";
-    std::cout << "  Evaluating data point " << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x"
-              << dataPoint.y << " of group " << GroupName(ctx.eval.StepEvalGroup()) << "\n";
-    std::cout << "Operations:\n";
-    util::displayFunc(ctx.eval.StepEvalOperations(), "=> ", ctx.eval.StepEvalIndex(), ctx.eval.StepEvalIndex() + 1);
-    std::cout << "Stack:\n";
-    size_t i = 0;
-    for (auto num : ctx.eval.StepEvalStack()) {
-        std::cout << "   " << i << ": " << num << "\n";
-        i++;
-    }
-    if (i32 result; ctx.eval.StepEvalResult(result)) {
-        std::cout << "Current result: " << result << "\n";
-    }
+    util::displayStepEvalState(ctx.eval);
 }
 
 void stepCancel(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -375,7 +446,7 @@ void stepCancel(InteractiveContext &ctx, const std::vector<std::string> &args) {
     std::cout << "Step-by-step evaluation cancelled.\n";
 }
 
-void evalall(InteractiveContext &ctx, const std::vector<std::string> &args) {
+void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
     if (args.empty()) {
         for (auto group : kGroups) {
             evaluate(ctx.eval, group);
@@ -576,45 +647,60 @@ void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
 } // namespace command
 
 void initCommands() {
+    commandFns.clear();
     commands.clear();
+    longestCommand = 0;
 
-    auto add = [&](std::initializer_list<std::string> aliases, Command command) {
+    auto add = [&](std::initializer_list<std::string> aliases, FnCommand fn, std::string description) {
+        size_t length = aliases.size() == 0 ? 0 : (aliases.size() - 1) * 2;
         for (auto &alias : aliases) {
-            commands.insert({Lowercase(alias), command});
+            commandFns.insert({Lowercase(alias), fn});
+            length += alias.size();
         }
+        longestCommand = std::max(longestCommand, length);
+        commands.push_back(CommandDesc{aliases, description});
     };
 
-    add({"q", "exit", "quit"}, {command::quit, "Quits the interactive evaluator."});
-    add({"h", "help"}, {command::help, "Displays this help text."});
-    add({"e", "eval"}, {command::stepEval, "Begins evaluating the current function in step-by-step mode.\n"
-                                           "  Arguments: group width height x y\n"
-                                           "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
-                                           "    width, height, x, y: specify a data point from the group"});
-    add({"n", "next"}, {command::stepNext, "Runs the next operation in the current step-by-step evaluation."});
-    add({"r", "reset"},
-        {command::stepReset,
-         "Resets the step-by-step evaluation to the beginning and transfers the current function to it."});
-    add({"s", "state"}, {command::stepState, "Displays the current state of the step-by-step evaluation."});
-    add({"c", "cancel"}, {command::stepCancel, "Cancels the current step-by-step evaluation."});
-    add({"evalall"}, {command::evalall, "Evaluates the current function against the entire data set or a subset.\n"
-                                        "  Arguments: group\n"
-                                        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
-    add({"func", "fn"}, {command::func, "Displays the current function."});
-    add({"addop"}, {command::addOp, "Adds one or more operations to the function.\n"
-                                    "  Arguments: op [op ...] [pos = -1]\n"
-                                    "    op: operator(s) to add\n"
-                                    "    pos: position to insert the operator at (-1 inserts at the end)"});
-    add({"delop"}, {command::delOp, "Removes one or more operations from the function.\n"
-                                    "  Arguments: pos [count = 1]\n"
-                                    "    pos: first operation to remove\n"
-                                    "    count: number of operations to remove"});
-    add({"clear"}, {command::clear, "Clears the function (erases all operations)."});
-    add({"save"}, {command::save, "Saves the current function to a file.\n"
-                                  "  Arguments: path\n"
-                                  "    path: path to the file where the function will be saved"});
-    add({"load"}, {command::load, "Loads a function from a file.\n"
-                                  "  Arguments: path\n"
-                                  "    path: path to the file where the function will be loaded"});
+    add({"q", "exit", "quit"}, command::quit, "Quits the interactive evaluator.");
+    add({"h", "help"}, command::help, "Displays this help text.");
+    add({"se", "stepeval"}, command::stepEval,
+        "Begins evaluating the current function in step-by-step mode.\n"
+        "  Arguments: group width height x y\n"
+        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
+        "    width, height, x, y: specify a data point from the group");
+    add({"n", "next"}, command::stepNext,
+        "Runs the next operation in the current step-by-step evaluation.\n"
+        "  Arguments: [count = 1]\n"
+        "    count: number of operations to execute.\n");
+    add({"g", "go"}, command::stepGo, "Runs the step-by-step evaluation until the end of the function.");
+    add({"r", "reset"}, command::stepReset,
+        "Resets the step-by-step evaluation to the beginning and transfers the current function to it.");
+    add({"s", "state"}, command::stepState, "Displays the current state of the step-by-step evaluation.");
+    add({"c", "cancel"}, command::stepCancel, "Cancels the current step-by-step evaluation.");
+    add({"e", "eval"}, command::eval,
+        "Evaluates the current function against the entire data set or a subset.\n"
+        "  Arguments: group\n"
+        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.");
+    add({"f", "fn", "func"}, command::func, "Displays the current function.");
+    add({"addop"}, command::addOp,
+        "Adds one or more operations to the function.\n"
+        "  Arguments: op [op ...] [pos = -1]\n"
+        "    op: operator(s) to add\n"
+        "    pos: position to insert the operator at (-1 inserts at the end)");
+    add({"delop"}, command::delOp,
+        "Removes one or more operations from the function.\n"
+        "  Arguments: pos [count = 1]\n"
+        "    pos: first operation to remove\n"
+        "    count: number of operations to remove");
+    add({"clear"}, command::clear, "Clears the function (erases all operations).");
+    add({"save"}, command::save,
+        "Saves the current function to a file.\n"
+        "  Arguments: path\n"
+        "    path: path to the file where the function will be saved");
+    add({"load"}, command::load,
+        "Loads a function from a file.\n"
+        "  Arguments: path\n"
+        "    path: path to the file where the function will be loaded");
 }
 
 struct CommandLine {
@@ -660,14 +746,18 @@ void runInteractiveEvaluator(std::filesystem::path root) {
     while (ctx.running && std::cin) {
         if (ctx.eval.IsStepping()) {
             auto dataPoint = ctx.eval.StepEvalDataPoint();
-            std::cout << "[step " << ctx.eval.StepEvalIndex() << "] " << dataPoint.width << "x" << dataPoint.height
-                      << " @ " << dataPoint.x << "x" << dataPoint.y;
+            if (ctx.eval.StepEvalIndex() < ctx.eval.StepEvalOperations().size()) {
+                std::cout << "[step " << ctx.eval.StepEvalIndex() << "] ";
+            } else {
+                std::cout << "[end] ";
+            }
+            std::cout << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x" << dataPoint.y;
         }
         std::cout << "> ";
         std::getline(std::cin, input);
         auto cmdLine = ParseCommandLine(input);
-        if (commands.contains(Lowercase(cmdLine.cmd))) {
-            commands.at(cmdLine.cmd).func(ctx, cmdLine.args);
+        if (commandFns.contains(Lowercase(cmdLine.cmd))) {
+            commandFns.at(cmdLine.cmd)(ctx, cmdLine.args);
         } else if (!cmdLine.cmd.empty()) {
             std::cout << "Unknown command \"" << cmdLine.cmd << "\"\n";
         }
