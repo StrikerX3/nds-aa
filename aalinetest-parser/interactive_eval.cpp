@@ -298,6 +298,54 @@ void addOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
     }
 }
 
+void delOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (args.size() < 1) {
+        std::cout << "Missing argument: pos\n";
+        std::cout << "Usage: delop pos [count = 1]\n";
+        return;
+    }
+
+    auto &ops = ctx.eval.Operations();
+    size_t pos;
+    size_t count = 1;
+    if (args.size() >= 1) {
+        try {
+            pos = std::stoi(args[0]);
+            if (pos > ops.size()) {
+                pos = ops.size();
+            }
+        } catch (...) {
+            std::cout << "Not a valid integer: \"" << args[0] << "\"\n";
+            return;
+        }
+    }
+    if (args.size() >= 2) {
+        try {
+            count = std::stoi(args[1]);
+            if (count + pos >= ops.size()) {
+                count = ops.size() - pos;
+            }
+        } catch (...) {
+            std::cout << "Not a valid integer: \"" << args[0] << "\"\n";
+            return;
+        }
+    }
+
+    {
+        size_t i = 0;
+        for (auto &op : ctx.eval.Operations()) {
+            if (i >= pos && i < pos + count) {
+                std::cout << "<= ";
+            } else {
+                std::cout << "   ";
+            }
+            std::cout << i << ": " << op.Str() << "\n";
+            i++;
+        }
+    }
+    ops.erase(ops.begin() + pos, ops.begin() + pos + count);
+}
+
 } // namespace command
 
 void initCommands() {
@@ -314,10 +362,14 @@ void initCommands() {
     add({"eval"}, {command::eval, "Evaluates the current function against the entire data set or a subset.\n"
                                   "Valid groups are LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
     add({"func", "fn"}, {command::func, "Displays the current function."});
-    add({"addop"}, {command::addOp, "Adds an operation to the function.\n"
+    add({"addop"}, {command::addOp, "Adds one or more operations to the function.\n"
                                     "  Arguments: op [op ...] [pos = -1]\n"
                                     "    op: operator(s) to add\n"
                                     "    pos: position to insert the operator at (-1 inserts at the end)"});
+    add({"delop"}, {command::delOp, "Removes one or more operations from the function.\n"
+                                    "  Arguments: pos [count = 1]\n"
+                                    "    pos: first operation to remove\n"
+                                    "    count: number of operations to remove"});
 }
 
 struct CommandLine {
