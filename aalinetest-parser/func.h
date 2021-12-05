@@ -23,10 +23,14 @@ enum class Operator {
     DivHeight,
     Div2,
     MulHeightDivWidthAA,
+
     PushX,
     PushY,
     PushWidth,
     PushHeight,
+    PushPosNeg,    // pushes 1 if positive, 0 if negative
+    PushXYMajor,   // pushes 1 if X-major, 0 if Y-major
+    PushLeftRight, // pushed 1 if left edge, 0 if right edge
 
     Add,
     Subtract,
@@ -51,12 +55,18 @@ enum class Operator {
 struct Variables {
     i32 x, y;
     i32 width, height;
+    bool positive;
+    bool xMajor;
+    bool left;
 
-    void Apply(const DataPoint &dataPoint) {
+    void Apply(const DataPoint &dataPoint, bool positive, bool xMajor, bool left) {
         x = dataPoint.x;
         y = dataPoint.y;
         width = dataPoint.width;
         height = dataPoint.height;
+        this->positive = positive;
+        this->xMajor = xMajor;
+        this->left = left;
     }
 };
 
@@ -99,6 +109,9 @@ struct Operation {
             case Operator::PushY: return "push_y";
             case Operator::PushWidth: return "push_width";
             case Operator::PushHeight: return "push_height";
+            case Operator::PushPosNeg: return "push_pos_neg";
+            case Operator::PushXYMajor: return "push_xy_major";
+            case Operator::PushLeftRight: return "push_left_right";
 
             case Operator::Add: return "add";
             case Operator::Subtract: return "sub";
@@ -218,6 +231,9 @@ private:
         case Operator::PushY: ctx.stack.push_back(ctx.vars.y); return true;
         case Operator::PushWidth: ctx.stack.push_back(ctx.vars.width); return true;
         case Operator::PushHeight: ctx.stack.push_back(ctx.vars.height); return true;
+        case Operator::PushPosNeg: ctx.stack.push_back(ctx.vars.positive); return true;
+        case Operator::PushXYMajor: ctx.stack.push_back(ctx.vars.xMajor); return true;
+        case Operator::PushLeftRight: ctx.stack.push_back(ctx.vars.left); return true;
 
         case Operator::Add: return binaryFunc([](i32 x, i32 y) { return x + y; });
         case Operator::Subtract: return binaryFunc([](i32 x, i32 y) { return x - y; });
@@ -297,9 +313,9 @@ struct Evaluator {
         }
     }
 
-    void BeginEval(const DataPoint &dataPoint) {
+    void BeginEval(const DataPoint &dataPoint, bool positive, bool xMajor, bool left) {
         ctx.stack.clear();
-        ctx.vars.Apply(dataPoint);
+        ctx.vars.Apply(dataPoint, positive, xMajor, left);
     }
 
     bool EvalOp(size_t index) {
@@ -342,8 +358,8 @@ struct Evaluator {
         return true;
     }
 
-    bool Eval(const DataPoint &dataPoint, i32 &result) {
-        if (!EvalCommon(dataPoint)) {
+    bool Eval(const DataPoint &dataPoint, bool positive, bool xMajor, bool left, i32 &result) {
+        if (!EvalCommon(dataPoint, positive, xMajor, left)) {
             return false;
         }
 
@@ -351,8 +367,8 @@ struct Evaluator {
         return true;
     }
 
-    bool EvalXMajor(const DataPoint &dataPoint, i32 &result) {
-        if (!EvalCommon(dataPoint)) {
+    bool EvalXMajor(const DataPoint &dataPoint, bool positive, bool xMajor, bool left, i32 &result) {
+        if (!EvalCommon(dataPoint, positive, xMajor, left)) {
             return false;
         }
 
@@ -374,8 +390,8 @@ struct Evaluator {
     }
 
 private:
-    bool EvalCommon(const DataPoint &dataPoint) {
-        BeginEval(dataPoint);
+    bool EvalCommon(const DataPoint &dataPoint, bool positive, bool xMajor, bool left) {
+        BeginEval(dataPoint, positive, xMajor, left);
         for (auto &op : ops) {
             if (!op.Execute(ctx)) {
                 return false;

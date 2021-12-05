@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 #include <vector>
 
 #include "types.h"
@@ -9,6 +10,11 @@ struct DataPoint {
     i32 x, y;
     i32 width, height;
     i32 expectedOutput;
+
+    std::string KeyStr() const {
+        return std::to_string(width) + "x" + std::to_string(height) + " @ " + std::to_string(x) + "x" +
+               std::to_string(y);
+    }
 };
 
 struct DataSet {

@@ -39,6 +39,48 @@ std::string GroupName(Group group) {
     }
 }
 
+bool GroupPositive(Group group) {
+    switch (group) {
+    case Group::LPX: return true;
+    case Group::LPY: return true;
+    case Group::LNX: return false;
+    case Group::LNY: return false;
+    case Group::RPX: return true;
+    case Group::RPY: return true;
+    case Group::RNX: return false;
+    case Group::RNY: return false;
+    default: return false;
+    }
+}
+
+bool GroupXMajor(Group group) {
+    switch (group) {
+    case Group::LPX: return true;
+    case Group::LPY: return false;
+    case Group::LNX: return true;
+    case Group::LNY: return false;
+    case Group::RPX: return true;
+    case Group::RPY: return false;
+    case Group::RNX: return true;
+    case Group::RNY: return false;
+    default: return false;
+    }
+}
+
+bool GroupLeft(Group group) {
+    switch (group) {
+    case Group::LPX: return true;
+    case Group::LPY: return true;
+    case Group::LNX: return true;
+    case Group::LNY: return true;
+    case Group::RPX: return false;
+    case Group::RPY: return false;
+    case Group::RNX: return false;
+    case Group::RNY: return false;
+    default: return false;
+    }
+}
+
 bool GroupFromName(std::string name, Group &group) {
     name = Uppercase(name);
     if (name == "LPX") {
@@ -78,10 +120,26 @@ public:
     template <typename Func>
     bool Eval(Group group, Func &&func) {
         for (auto &dataPoint : GetDataSet(group)) {
-            if (i32 result; m_eval.Eval(dataPoint, result)) {
+            if (i32 result;
+                m_eval.Eval(dataPoint, GroupPositive(group), GroupXMajor(group), GroupLeft(group), result)) {
                 func(dataPoint, result);
             } else {
                 return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename Func>
+    bool Eval(Group group, i32 width, i32 height, Func &&func) {
+        for (auto &dataPoint : GetDataSet(group)) {
+            if (dataPoint.width == width && dataPoint.height == height) {
+                if (i32 result;
+                    m_eval.Eval(dataPoint, GroupPositive(group), GroupXMajor(group), GroupLeft(group), result)) {
+                    func(dataPoint, result);
+                } else {
+                    return false;
+                }
             }
         }
         return true;
@@ -115,7 +173,7 @@ public:
                 m_stepEvalGroup = group;
                 m_stepEvalDataPoint = dataPoint;
                 m_stepEval.ops = m_eval.ops;
-                m_stepEval.BeginEval(dataPoint);
+                m_stepEval.BeginEval(dataPoint, GroupPositive(group), GroupXMajor(group), GroupLeft(group));
                 return true;
             }
         }
@@ -126,7 +184,8 @@ public:
         if (m_stepEvalActive) {
             m_stepEvalIndex = 0;
             m_stepEval.ops = m_eval.ops;
-            m_stepEval.BeginEval(m_stepEvalDataPoint);
+            m_stepEval.BeginEval(m_stepEvalDataPoint, GroupPositive(m_stepEvalGroup), GroupXMajor(m_stepEvalGroup),
+                                 GroupLeft(m_stepEvalGroup));
         }
     }
 
@@ -192,26 +251,68 @@ void evaluate(InteractiveEvaluator &eval, Group group) {
 
     std::vector<Output> mismatches;
     mismatches.reserve(10);
+    u32 mismatchCount = 0;
     u32 totalError = 0;
 
+    bool hasEntries = false;
     bool valid = eval.Eval(group, [&](const DataPoint &dataPoint, i32 result) {
+        hasEntries = true;
         if (result != dataPoint.expectedOutput && mismatches.size() < 10) {
             mismatches.push_back(Output{dataPoint, result});
         }
+        mismatchCount++;
         totalError += std::abs(result - dataPoint.expectedOutput);
     });
 
     if (valid) {
-        if (totalError == 0) {
+        if (!hasEntries) {
+            std::cout << "No entries\n";
+        } else if (totalError == 0) {
             std::cout << "Perfect match!\n";
         } else {
-            std::cout << "Off by " << totalError << "\n";
+            std::cout << mismatchCount << " mismatch";
+            if (mismatchCount != 1) {
+                std::cout << "es";
+            }
+            std::cout << " with a total error of " << totalError << "\n";
+
             std::cout << "First " << mismatches.size() << " mismatches:\n";
             for (auto &mismatch : mismatches) {
-                std::cout << "  " << mismatch.dataPoint.width << "x" << mismatch.dataPoint.height << " @ "
-                          << mismatch.dataPoint.x << "x" << mismatch.dataPoint.y << "   " << mismatch.result
+                std::cout << "  " << mismatch.dataPoint.KeyStr() << "   " << mismatch.result
                           << " != " << mismatch.dataPoint.expectedOutput << "\n";
             }
+        }
+    } else {
+        std::cout << "Invalid formula\n";
+    }
+}
+
+void evaluate(InteractiveEvaluator &eval, Group group, i32 width, i32 height) {
+    std::cout << GroupName(group) << " " << width << "x" << height << ":\n";
+
+    u32 mismatchCount = 0;
+    u32 totalError = 0;
+
+    bool hasEntries = false;
+    bool valid = eval.Eval(group, width, height, [&](const DataPoint &dataPoint, i32 result) {
+        hasEntries = true;
+        std::cout << "  " << dataPoint.KeyStr() << "  ->  " << result
+                  << ((result == dataPoint.expectedOutput) ? " == " : " != ") << dataPoint.expectedOutput << "\n";
+        mismatchCount++;
+        totalError += std::abs(result - dataPoint.expectedOutput);
+    });
+
+    if (valid) {
+        if (!hasEntries) {
+            std::cout << "No entries\n";
+        } else if (totalError == 0) {
+            std::cout << "Perfect match!\n";
+        } else {
+            std::cout << mismatchCount << " mismatch";
+            if (mismatchCount != 1) {
+                std::cout << "es";
+            }
+            std::cout << " with a total error of " << totalError << "\n";
         }
     } else {
         std::cout << "Invalid formula\n";
@@ -290,8 +391,8 @@ void displayStepEvalResult(InteractiveEvaluator &eval) {
 void displayStepEvalState(InteractiveEvaluator &eval) {
     auto dataPoint = eval.StepEvalDataPoint();
     std::cout << "Step-by-step evaluator state:\n";
-    std::cout << "  Evaluating data point " << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x"
-              << dataPoint.y << " of group " << GroupName(eval.StepEvalGroup()) << "\n";
+    std::cout << "  Evaluating data point " << dataPoint.KeyStr() << " of group " << GroupName(eval.StepEvalGroup())
+              << "\n";
     std::cout << "Operations:\n";
     util::displayFunc(eval.StepEvalOperations(), "=> ", eval.StepEvalIndex(), eval.StepEvalIndex() + 1);
     std::cout << "Stack:\n";
@@ -315,7 +416,7 @@ bool stepEval(InteractiveEvaluator &eval) {
         std::cout << "\n";
         return true;
     } else {
-        std::cout << "Reached the end of the function.\n";
+        std::cout << "Reached the end of the formula.\n";
         return false;
     }
 }
@@ -447,16 +548,34 @@ void stepCancel(InteractiveContext &ctx, const std::vector<std::string> &args) {
 }
 
 void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    using util::parseNum;
+
     if (args.empty()) {
         for (auto group : kGroups) {
             evaluate(ctx.eval, group);
         }
     } else {
-        for (auto arg : args) {
-            if (Group group; GroupFromName(arg, group)) {
-                evaluate(ctx.eval, group);
+        size_t argIndex = 0;
+        while (argIndex < args.size()) {
+            if (Group group; GroupFromName(args[argIndex], group)) {
+                if (args.size() - argIndex >= 3) {
+                    i32 width, height;
+                    try {
+                        width = std::stoi(args[argIndex + 1]);
+                        height = std::stoi(args[argIndex + 2]);
+                        evaluate(ctx.eval, group, width, height);
+                        argIndex += 3;
+                    } catch (...) {
+                        evaluate(ctx.eval, group);
+                        argIndex += 1;
+                    }
+                } else {
+                    evaluate(ctx.eval, group);
+                    argIndex += 1;
+                }
             } else {
-                std::cout << "Invalid group: \"" << arg << "\"\n";
+                std::cout << "Invalid group: \"" << args[argIndex] << "\"\n";
+                argIndex += 1;
             }
         }
     }
@@ -506,6 +625,9 @@ auto opTemplates = [] {
     templates.insert({"push_y", {.type = Operation::Type::Operator, .op = Operator::PushY}});
     templates.insert({"push_width", {.type = Operation::Type::Operator, .op = Operator::PushWidth}});
     templates.insert({"push_height", {.type = Operation::Type::Operator, .op = Operator::PushHeight}});
+    templates.insert({"push_pos_neg", {.type = Operation::Type::Operator, .op = Operator::PushPosNeg}});
+    templates.insert({"push_xy_major", {.type = Operation::Type::Operator, .op = Operator::PushXYMajor}});
+    templates.insert({"push_left_right", {.type = Operation::Type::Operator, .op = Operator::PushLeftRight}});
 
     return templates;
 }();
@@ -622,7 +744,7 @@ void save(InteractiveContext &ctx, const std::vector<std::string> &args) {
     for (auto &op : ops) {
         out << op.Str() << " ";
     }
-    std::cout << "Function saved to \"" << args[0] << "\"\n";
+    std::cout << "Formula saved to \"" << args[0] << "\"\n";
 }
 
 void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -640,8 +762,33 @@ void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
         auto op = Lowercase(opStr);
         parseAndAddOp(ops, op);
     }
-    std::cout << "Function loaded from \"" << args[0] << "\"\n";
+    std::cout << "Formula loaded from \"" << args[0] << "\"\n";
     util::displayFunc(ops, "   ");
+}
+
+void dump(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    using util::parseNum;
+
+    if (args.size() < 3) {
+        std::cout << "Missing arguments\n";
+        std::cout << "Usage: dump group width height\n";
+        return;
+    }
+
+    if (Group group; GroupFromName(args[0], group)) {
+        i32 width, height;
+        if (!parseNum(args[1], width) || !parseNum(args[2], height)) {
+            return;
+        }
+        auto &dataset = ctx.eval.GetDataSet(group);
+        for (auto &dataPoint : dataset) {
+            if (dataPoint.width == width && dataPoint.height == height) {
+                std::cout << dataPoint.KeyStr() << " = " << dataPoint.expectedOutput << "\n";
+            }
+        }
+    } else {
+        std::cout << "Invalid group: \"" << args[0] << "\"\n";
+    }
 }
 
 } // namespace command
@@ -664,7 +811,7 @@ void initCommands() {
     add({"q", "exit", "quit"}, command::quit, "Quits the interactive evaluator.");
     add({"h", "help"}, command::help, "Displays this help text.");
     add({"se", "stepeval"}, command::stepEval,
-        "Begins evaluating the current function in step-by-step mode.\n"
+        "Begins evaluating the current formula in step-by-step mode.\n"
         "  Arguments: group width height x y\n"
         "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
         "    width, height, x, y: specify a data point from the group");
@@ -672,35 +819,45 @@ void initCommands() {
         "Runs the next operation in the current step-by-step evaluation.\n"
         "  Arguments: [count = 1]\n"
         "    count: number of operations to execute.\n");
-    add({"g", "go"}, command::stepGo, "Runs the step-by-step evaluation until the end of the function.");
+    add({"g", "go"}, command::stepGo, "Runs the step-by-step evaluation until the end of the formula.");
     add({"r", "reset"}, command::stepReset,
-        "Resets the step-by-step evaluation to the beginning and transfers the current function to it.");
+        "Resets the step-by-step evaluation to the beginning and transfers the current formula to it.");
     add({"s", "state"}, command::stepState, "Displays the current state of the step-by-step evaluation.");
     add({"c", "cancel"}, command::stepCancel, "Cancels the current step-by-step evaluation.");
     add({"e", "eval"}, command::eval,
-        "Evaluates the current function against the entire data set or a subset.\n"
-        "  Arguments: group\n"
-        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.");
-    add({"f", "fn", "func"}, command::func, "Displays the current function.");
+        "Evaluates the current formula against the entire data set or a subset.\n"
+        "  Arguments: [group] [width height] [group [width height] ...]\n"
+        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
+        "    width and height: specify the size of the slope to evaluate.\n"
+        "    If executed without arguments, evaluates all groups and dumps the first ten mismatches of each group.\n"
+        "    If executed with the group argument, evaluates that group and dumps the first ten mismatches.\n"
+        "    If executed with all arguments, evaluates that specific slope size and dumps all results.\n"
+        "    Multiple data set may be evaluated by passing additional groups and optional slope sizes.\n");
+    add({"f", "fn", "func"}, command::func, "Displays the current formula.");
     add({"addop"}, command::addOp,
-        "Adds one or more operations to the function.\n"
+        "Adds one or more operations to the formula.\n"
         "  Arguments: op [op ...] [pos = -1]\n"
         "    op: operator(s) to add\n"
         "    pos: position to insert the operator at (-1 inserts at the end)");
     add({"delop"}, command::delOp,
-        "Removes one or more operations from the function.\n"
+        "Removes one or more operations from the formula.\n"
         "  Arguments: pos [count = 1]\n"
         "    pos: first operation to remove\n"
         "    count: number of operations to remove");
-    add({"clear"}, command::clear, "Clears the function (erases all operations).");
+    add({"clear"}, command::clear, "Clears the formula (erases all operations).");
     add({"save"}, command::save,
-        "Saves the current function to a file.\n"
+        "Saves the current formula to a file.\n"
         "  Arguments: path\n"
-        "    path: path to the file where the function will be saved");
+        "    path: path to the file where the formula will be saved");
     add({"load"}, command::load,
-        "Loads a function from a file.\n"
+        "Loads a formula from a file.\n"
         "  Arguments: path\n"
-        "    path: path to the file where the function will be loaded");
+        "    path: path to the file where the formula will be loaded");
+    add({"dump"}, command::dump,
+        "Dumps a portion of the data set.\n"
+        "  Arguments: group width height\n"
+        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
+        "    width and height: size of the slope to dump");
 }
 
 struct CommandLine {
@@ -751,7 +908,7 @@ void runInteractiveEvaluator(std::filesystem::path root) {
             } else {
                 std::cout << "[end] ";
             }
-            std::cout << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x" << dataPoint.y;
+            std::cout << dataPoint.KeyStr();
         }
         std::cout << "> ";
         std::getline(std::cin, input);

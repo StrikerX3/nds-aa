@@ -3,6 +3,8 @@
 #include "file.h"
 #include "slope.h"
 
+#include <algorithm>
+
 void extractDataSet(std::filesystem::path root) {
     auto dataT = readFile(root / "T.bin");
     auto dataB = readFile(root / "B.bin");
@@ -172,6 +174,31 @@ std::vector<DataPoint> loadOne(std::filesystem::path file) {
             });
         }
     }
+
+    std::sort(dataset.begin(), dataset.end(), [](const DataPoint &lhs, const DataPoint &rhs) {
+        if (lhs.height < rhs.height) {
+            return true;
+        }
+        if (lhs.height > rhs.height) {
+            return false;
+        }
+
+        if (lhs.width < rhs.width) {
+            return true;
+        }
+        if (lhs.width > rhs.width) {
+            return false;
+        }
+
+        if (lhs.x < rhs.x) {
+            return true;
+        }
+        if (lhs.x > rhs.x) {
+            return false;
+        }
+
+        return lhs.y < rhs.y;
+    });
 
     return dataset;
 }
