@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -11,10 +12,11 @@
 enum class Operator {
     FracXStart,
     FracXEnd,
+    FracXWidth,
     XStart,
     XEnd,
     XWidth,
-    ExpandAABits,
+    InsertAAFracBits,
     MulWidth,
     MulHeight,
     DivWidth,
@@ -81,10 +83,11 @@ struct Operation {
             switch (op) {
             case Operator::FracXStart: return "push_frac_x_start";
             case Operator::FracXEnd: return "push_frac_x_end";
+            case Operator::FracXWidth: return "push_frac_x_width";
             case Operator::XStart: return "push_x_start";
             case Operator::XEnd: return "push_x_end";
             case Operator::XWidth: return "push_x_width";
-            case Operator::ExpandAABits: return "expand_aa_bits";
+            case Operator::InsertAAFracBits: return "insert_aa_frac_bits";
             case Operator::MulWidth: return "mul_width";
             case Operator::MulHeight: return "mul_height";
             case Operator::DivWidth: return "div_width";
@@ -115,7 +118,7 @@ struct Operation {
             }
             return "(invalid op)";
         case Type::Constant:
-            return std::string("push_const ") + std::to_string(constVal);
+            return std::string("push_") + std::to_string(constVal);
             // return std::format("push_const {}", constVal);
         default: return "(invalid type)";
         }
@@ -167,7 +170,14 @@ private:
             i32 divResult = (Slope::kOne / ctx.vars.height);
             i32 dx = ctx.vars.y * divResult * ctx.vars.width;
             i32 fracStart = Slope::kBias + dx;
-            return (fracStart & Slope::kMask) + dx - Slope::kOne;
+            stack.push_back((fracStart & Slope::kMask) + dx - Slope::kOne);
+            return true;
+        }
+        case Operator::FracXWidth: {
+            i32 divResult = (Slope::kOne / ctx.vars.height);
+            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+            stack.push_back(dx);
+            return true;
         }
 
         case Operator::XStart: {
@@ -180,7 +190,8 @@ private:
             i32 divResult = (Slope::kOne / ctx.vars.height);
             i32 dx = ctx.vars.y * divResult * ctx.vars.width;
             i32 fracStart = Slope::kBias + dx;
-            return ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
+            stack.push_back(((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits);
+            return true;
         }
 
         case Operator::XWidth: {
@@ -189,9 +200,10 @@ private:
             i32 fracStart = Slope::kBias + dx;
             i32 xStart = fracStart >> Slope::kFracBits;
             i32 xEnd = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
-            return xEnd - xStart + 1;
+            stack.push_back(xEnd - xStart + 1);
+            return true;
         }
-        case Operator::ExpandAABits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBitsX; });
+        case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBitsX; });
         case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
         case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
         case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / ctx.vars.width; });
@@ -268,32 +280,20 @@ struct Evaluator {
         }
     }
 
-    bool Eval(i32 &result) {
-        ctx.stack.clear();
-        for (auto &op : ops) {
-            if (!op.Execute(ctx)) {
-                return false;
-            }
-        }
-        if (ctx.stack.size() != 1) {
+    bool Eval(const DataPoint &dataPoint, i32 &result) {
+        if (!EvalCommon(dataPoint)) {
             return false;
         }
 
         result = ctx.stack.back();
-
         return true;
     }
 
-    bool EvalXMajor(i32 &result) {
-        ctx.stack.clear();
-        for (auto &op : ops) {
-            if (!op.Execute(ctx)) {
-                return false;
-            }
-        }
-        if (ctx.stack.size() != 1) {
+    bool EvalXMajor(const DataPoint &dataPoint, i32 &result) {
+        if (!EvalCommon(dataPoint)) {
             return false;
         }
+
         const i32 divResult = (Slope::kOne / ctx.vars.height);
         const i32 dx = ctx.vars.y * divResult * ctx.vars.width;
         const i32 fracStart = Slope::kBias + dx;
@@ -308,7 +308,26 @@ struct Evaluator {
         const i32 fracCoverage = baseCoverage + offset * coverageStep;
         const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABaseX;
         result = finalCoverage >> Slope::kAAFracBitsX;
+        return true;
+    }
 
+private:
+    bool EvalCommon(const DataPoint &dataPoint) {
+        ctx.stack.clear();
+        ctx.vars.Apply(dataPoint);
+        for (auto &op : ops) {
+            if (!op.Execute(ctx)) {
+                std::cout << op.Str() << " failed\n";
+                return false;
+            }
+        }
+        /*if (ctx.stack.size() != 1) {
+            return false;
+        }*/
+        // NOTE: relaxed rule -- allows garbage on the stack; top of the stack contains the result
+        if (ctx.stack.empty()) {
+            return false;
+        }
         return true;
     }
 };

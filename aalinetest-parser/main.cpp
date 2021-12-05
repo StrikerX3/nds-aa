@@ -78,7 +78,7 @@ int main4() {
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XStart});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XEnd});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XWidth});
-        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ExpandAABits});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeight});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivWidth});

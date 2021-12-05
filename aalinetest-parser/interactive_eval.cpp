@@ -4,6 +4,7 @@
 #include "func.h"
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <map>
 
@@ -77,8 +78,7 @@ public:
     template <typename Func>
     bool Eval(Group group, Func &&func) {
         for (auto &dataPoint : GetDataSet(group)) {
-            m_eval.ctx.vars.Apply(dataPoint);
-            if (i32 result; m_eval.Eval(result)) {
+            if (i32 result; m_eval.Eval(dataPoint, result)) {
                 func(dataPoint, result);
             } else {
                 return false;
@@ -160,6 +160,24 @@ struct Command {
 
 std::map<std::string, Command> commands;
 
+namespace util {
+
+void displayFunc(std::vector<Operation> &ops, std::string marker = "", size_t markerStart = ~0, size_t markerEnd = 0) {
+    size_t i = 0;
+    std::string spaces(marker.size(), ' ');
+    for (auto &op : ops) {
+        if (i >= markerStart && i < markerEnd) {
+            std::cout << marker;
+        } else {
+            std::cout << spaces;
+        }
+        std::cout << i << ": " << op.Str() << "\n";
+        i++;
+    }
+}
+
+} // namespace util
+
 namespace command {
 
 void quit(InteractiveContext &ctx, const std::vector<std::string> &) {
@@ -172,7 +190,7 @@ void help(InteractiveContext &, const std::vector<std::string> &) {
     }
 }
 
-void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
+void evalall(InteractiveContext &ctx, const std::vector<std::string> &args) {
     if (args.empty()) {
         for (auto group : kGroups) {
             evaluate(ctx.eval, group);
@@ -189,55 +207,70 @@ void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
 }
 
 void func(InteractiveContext &ctx, const std::vector<std::string> &) {
-    size_t i = 0;
-    for (auto &op : ctx.eval.Operations()) {
-        std::cout << i << ": " << op.Str() << "\n";
-        i++;
+    util::displayFunc(ctx.eval.Operations(), "   ");
+}
+
+auto opTemplates = [] {
+    std::map<std::string, Operation> templates;
+    templates.insert({"add", {.type = Operation::Type::Operator, .op = Operator::Add}});
+    templates.insert({"sub", {.type = Operation::Type::Operator, .op = Operator::Subtract}});
+    templates.insert({"mul", {.type = Operation::Type::Operator, .op = Operator::Multiply}});
+    templates.insert({"div", {.type = Operation::Type::Operator, .op = Operator::Divide}});
+    templates.insert({"mod", {.type = Operation::Type::Operator, .op = Operator::Modulo}});
+    templates.insert({"neg", {.type = Operation::Type::Operator, .op = Operator::Negate}});
+    templates.insert({"shl", {.type = Operation::Type::Operator, .op = Operator::LeftShift}});
+    templates.insert({"sar", {.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift}});
+    templates.insert({"shr", {.type = Operation::Type::Operator, .op = Operator::LogicRightShift}});
+    templates.insert({"and", {.type = Operation::Type::Operator, .op = Operator::And}});
+    templates.insert({"or", {.type = Operation::Type::Operator, .op = Operator::Or}});
+    templates.insert({"xor", {.type = Operation::Type::Operator, .op = Operator::Xor}});
+    templates.insert({"not", {.type = Operation::Type::Operator, .op = Operator::Not}});
+    templates.insert({"dup", {.type = Operation::Type::Operator, .op = Operator::Dup}});
+    templates.insert({"swap", {.type = Operation::Type::Operator, .op = Operator::Swap}});
+    templates.insert({"drop", {.type = Operation::Type::Operator, .op = Operator::Drop}});
+
+    templates.insert({"push_frac_x_start", {.type = Operation::Type::Operator, .op = Operator::FracXStart}});
+    templates.insert({"push_frac_x_end", {.type = Operation::Type::Operator, .op = Operator::FracXEnd}});
+    templates.insert({"push_frac_x_width", {.type = Operation::Type::Operator, .op = Operator::FracXWidth}});
+    templates.insert({"push_x_start", {.type = Operation::Type::Operator, .op = Operator::XStart}});
+    templates.insert({"push_x_end", {.type = Operation::Type::Operator, .op = Operator::XEnd}});
+    templates.insert({"push_x_width", {.type = Operation::Type::Operator, .op = Operator::XWidth}});
+    templates.insert({"insert_aa_frac_bits", {.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits}});
+    templates.insert({"mul_width", {.type = Operation::Type::Operator, .op = Operator::MulWidth}});
+    templates.insert({"mul_height", {.type = Operation::Type::Operator, .op = Operator::MulHeight}});
+    templates.insert({"div_width", {.type = Operation::Type::Operator, .op = Operator::DivWidth}});
+    templates.insert({"div_height", {.type = Operation::Type::Operator, .op = Operator::DivHeight}});
+    templates.insert({"div_2", {.type = Operation::Type::Operator, .op = Operator::Div2}});
+    templates.insert(
+        {"mul_height_div_width_aa", {.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA}});
+
+    templates.insert({"push_x", {.type = Operation::Type::Operator, .op = Operator::PushX}});
+    templates.insert({"push_y", {.type = Operation::Type::Operator, .op = Operator::PushY}});
+    templates.insert({"push_width", {.type = Operation::Type::Operator, .op = Operator::PushWidth}});
+    templates.insert({"push_height", {.type = Operation::Type::Operator, .op = Operator::PushHeight}});
+
+    return templates;
+}();
+
+void parseAndAddOp(std::vector<Operation> &ops, std::string op) {
+    if (opTemplates.contains(op)) {
+        ops.push_back(opTemplates.at(op));
+    } else if (op.starts_with("push_")) {
+        auto num = op.substr(5);
+        try {
+            Operation operation;
+            operation.constVal = std::stoi(num);
+            operation.type = Operation::Type::Constant;
+            ops.push_back(operation);
+        } catch (...) {
+            std::cout << "Invalid constant: \"" << num << "\" -- ignored\n";
+        }
+    } else {
+        std::cout << "Invalid operation: \"" << op << "\" -- ignored\n";
     }
 }
 
 void addOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
-    static auto opTemplates = [] {
-        std::map<std::string, Operation> templates;
-        templates.insert({"add", {.type = Operation::Type::Operator, .op = Operator::Add}});
-        templates.insert({"sub", {.type = Operation::Type::Operator, .op = Operator::Subtract}});
-        templates.insert({"mul", {.type = Operation::Type::Operator, .op = Operator::Multiply}});
-        templates.insert({"div", {.type = Operation::Type::Operator, .op = Operator::Divide}});
-        templates.insert({"mod", {.type = Operation::Type::Operator, .op = Operator::Modulo}});
-        templates.insert({"neg", {.type = Operation::Type::Operator, .op = Operator::Negate}});
-        templates.insert({"shl", {.type = Operation::Type::Operator, .op = Operator::LeftShift}});
-        templates.insert({"sar", {.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift}});
-        templates.insert({"shr", {.type = Operation::Type::Operator, .op = Operator::LogicRightShift}});
-        templates.insert({"and", {.type = Operation::Type::Operator, .op = Operator::And}});
-        templates.insert({"or", {.type = Operation::Type::Operator, .op = Operator::Or}});
-        templates.insert({"xor", {.type = Operation::Type::Operator, .op = Operator::Xor}});
-        templates.insert({"not", {.type = Operation::Type::Operator, .op = Operator::Not}});
-        templates.insert({"dup", {.type = Operation::Type::Operator, .op = Operator::Dup}});
-        templates.insert({"swap", {.type = Operation::Type::Operator, .op = Operator::Swap}});
-        templates.insert({"drop", {.type = Operation::Type::Operator, .op = Operator::Drop}});
-
-        templates.insert({"frac_x_start", {.type = Operation::Type::Operator, .op = Operator::FracXStart}});
-        templates.insert({"frac_x_end", {.type = Operation::Type::Operator, .op = Operator::FracXEnd}});
-        templates.insert({"x_start", {.type = Operation::Type::Operator, .op = Operator::XStart}});
-        templates.insert({"x_end", {.type = Operation::Type::Operator, .op = Operator::XEnd}});
-        templates.insert({"x_width", {.type = Operation::Type::Operator, .op = Operator::XWidth}});
-        templates.insert({"expand_aa_bits", {.type = Operation::Type::Operator, .op = Operator::ExpandAABits}});
-        templates.insert({"mul_width", {.type = Operation::Type::Operator, .op = Operator::MulWidth}});
-        templates.insert({"mul_height", {.type = Operation::Type::Operator, .op = Operator::MulHeight}});
-        templates.insert({"div_width", {.type = Operation::Type::Operator, .op = Operator::DivWidth}});
-        templates.insert({"div_height", {.type = Operation::Type::Operator, .op = Operator::DivHeight}});
-        templates.insert({"div_2", {.type = Operation::Type::Operator, .op = Operator::Div2}});
-        templates.insert(
-            {"mul_height_div_width_aa", {.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA}});
-
-        templates.insert({"push_x", {.type = Operation::Type::Operator, .op = Operator::PushX}});
-        templates.insert({"push_y", {.type = Operation::Type::Operator, .op = Operator::PushY}});
-        templates.insert({"push_width", {.type = Operation::Type::Operator, .op = Operator::PushWidth}});
-        templates.insert({"push_height", {.type = Operation::Type::Operator, .op = Operator::PushHeight}});
-
-        return templates;
-    }();
-
     if (args.size() < 1) {
         std::cout << "Missing argument: op\n";
         std::cout << "Usage: addop op [op ...] [pos]\n";
@@ -245,7 +278,7 @@ void addOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
         for (auto &[name, _] : opTemplates) {
             std::cout << " " << name;
         }
-        std::cout << "\n  or const_#, where # is any valid signed 32-bit integer\n";
+        std::cout << "\n  or push_#, where # is any valid signed 32-bit integer\n";
         return;
     }
 
@@ -270,32 +303,12 @@ void addOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
     std::vector<Operation> newOps;
     for (size_t k = 0; k < opsEnd; k++) {
         auto op = Lowercase(args[k]);
-        Operation operation;
-        if (opTemplates.contains(op)) {
-            operation = opTemplates.at(op);
-        } else if (op.starts_with("const_")) {
-            auto num = op.substr(6);
-            operation.type = Operation::Type::Constant;
-            operation.constVal = std::stoi(num);
-        } else {
-            std::cout << "Invalid operation: \"" << op << "\"\n";
-        }
-        newOps.push_back(operation);
+        parseAndAddOp(newOps, op);
     }
     ops.insert(ops.begin() + pos, newOps.begin(), newOps.end());
 
-    {
-        size_t i = 0;
-        for (auto &op : ctx.eval.Operations()) {
-            if (i >= pos && i < pos + newOps.size()) {
-                std::cout << "=> ";
-            } else {
-                std::cout << "   ";
-            }
-            std::cout << i << ": " << op.Str() << "\n";
-            i++;
-        }
-    }
+    util::displayFunc(ops, "=> ", pos, pos + newOps.size());
+    std::cout << newOps.size() << " operations inserted\n";
 }
 
 void delOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -306,7 +319,7 @@ void delOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
     }
 
     auto &ops = ctx.eval.Operations();
-    size_t pos;
+    size_t pos = 0;
     size_t count = 1;
     if (args.size() >= 1) {
         try {
@@ -331,19 +344,46 @@ void delOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
         }
     }
 
-    {
-        size_t i = 0;
-        for (auto &op : ctx.eval.Operations()) {
-            if (i >= pos && i < pos + count) {
-                std::cout << "<= ";
-            } else {
-                std::cout << "   ";
-            }
-            std::cout << i << ": " << op.Str() << "\n";
-            i++;
-        }
-    }
+    util::displayFunc(ops, "<= ", pos, pos + count);
     ops.erase(ops.begin() + pos, ops.begin() + pos + count);
+}
+
+void clear(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    ctx.eval.Operations().clear();
+}
+
+void save(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (args.size() < 1) {
+        std::cout << "Missing argument: path\n";
+        std::cout << "Usage: save path\n";
+        return;
+    }
+
+    auto &ops = ctx.eval.Operations();
+    std::ofstream out{args[0]};
+    for (auto &op : ops) {
+        out << op.Str() << " ";
+    }
+    std::cout << "Function saved to \"" << args[0] << "\"\n";
+}
+
+void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (args.size() < 1) {
+        std::cout << "Missing argument: path\n";
+        std::cout << "Usage: load path\n";
+        return;
+    }
+
+    auto &ops = ctx.eval.Operations();
+    ops.clear();
+    std::ifstream in{args[0]};
+    std::string opStr;
+    while (in >> opStr) {
+        auto op = Lowercase(opStr);
+        parseAndAddOp(ops, op);
+    }
+    std::cout << "Function loaded from \"" << args[0] << "\"\n";
+    util::displayFunc(ops, "   ");
 }
 
 } // namespace command
@@ -359,8 +399,8 @@ void initCommands() {
 
     add({"q", "exit", "quit"}, {command::quit, "Quits the interactive evaluator."});
     add({"h", "help"}, {command::help, "Displays this help text."});
-    add({"eval"}, {command::eval, "Evaluates the current function against the entire data set or a subset.\n"
-                                  "Valid groups are LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
+    add({"evalall"}, {command::evalall, "Evaluates the current function against the entire data set or a subset.\n"
+                                        "Valid groups are LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
     add({"func", "fn"}, {command::func, "Displays the current function."});
     add({"addop"}, {command::addOp, "Adds one or more operations to the function.\n"
                                     "  Arguments: op [op ...] [pos = -1]\n"
@@ -370,6 +410,13 @@ void initCommands() {
                                     "  Arguments: pos [count = 1]\n"
                                     "    pos: first operation to remove\n"
                                     "    count: number of operations to remove"});
+    add({"clear"}, {command::clear, "Clears the function (erases all operations)."});
+    add({"save"}, {command::save, "Saves the current function to a file.\n"
+                                  "  Arguments: path\n"
+                                  "    path: path to the file where the function will be saved"});
+    add({"load"}, {command::load, "Loads a function from a file.\n"
+                                  "  Arguments: path\n"
+                                  "    path: path to the file where the function will be loaded"});
 }
 
 struct CommandLine {
@@ -419,7 +466,7 @@ void runInteractiveEvaluator(std::filesystem::path root) {
         if (commands.contains(Lowercase(cmdLine.cmd))) {
             commands.at(cmdLine.cmd).func(ctx, cmdLine.args);
         } else if (!cmdLine.cmd.empty()) {
-            std::cout << "Unknown command \"" << cmdLine.cmd << "\"";
+            std::cout << "Unknown command \"" << cmdLine.cmd << "\"\n";
         }
     }
     std::cout << "Quitting.\n";
