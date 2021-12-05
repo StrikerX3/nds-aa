@@ -166,17 +166,13 @@ inline std::string OperatorName(Operator op) {
 struct Variables {
     i32 x, y;
     i32 width, height;
-    bool positive;
-    bool xMajor;
     bool left;
 
-    void Apply(const DataPoint &dataPoint, bool positive, bool xMajor, bool left) {
+    void Apply(const DataPoint &dataPoint, bool left) {
         x = dataPoint.x;
         y = dataPoint.y;
         width = dataPoint.width;
         height = dataPoint.height;
-        this->positive = positive;
-        this->xMajor = xMajor;
         this->left = left;
     }
 };
@@ -184,6 +180,7 @@ struct Variables {
 struct Context {
     Variables vars;
     std::vector<i32> stack;
+    Slope slope;
 
 private:
     friend struct Operation;
@@ -249,10 +246,10 @@ private:
         case Operator::PushY: ctx.stack.push_back(ctx.vars.y); return true;
         case Operator::PushWidth: ctx.stack.push_back(ctx.vars.width); return true;
         case Operator::PushHeight: ctx.stack.push_back(ctx.vars.height); return true;
-        case Operator::PushPositive: ctx.stack.push_back(ctx.vars.positive); return true;
-        case Operator::PushNegative: ctx.stack.push_back(!ctx.vars.positive); return true;
-        case Operator::PushXMajor: ctx.stack.push_back(ctx.vars.xMajor); return true;
-        case Operator::PushYMajor: ctx.stack.push_back(!ctx.vars.xMajor); return true;
+        case Operator::PushPositive: ctx.stack.push_back(!ctx.slope.IsNegative()); return true;
+        case Operator::PushNegative: ctx.stack.push_back(ctx.slope.IsNegative()); return true;
+        case Operator::PushXMajor: ctx.stack.push_back(ctx.slope.IsXMajor()); return true;
+        case Operator::PushYMajor: ctx.stack.push_back(!ctx.slope.IsXMajor()); return true;
         case Operator::PushLeft: ctx.stack.push_back(ctx.vars.left); return true;
         case Operator::PushRight: ctx.stack.push_back(!ctx.vars.left); return true;
 
@@ -325,49 +322,16 @@ private:
                 return true;
             }
 
-        case Operator::FracXStart: {
-            i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = divResult * ctx.vars.width;
-            stack.push_back(Slope::kBias + ctx.vars.y * dx);
-            return true;
-        }
-        case Operator::FracXEnd: {
-            i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = divResult * ctx.vars.width;
-            i32 fracStart = Slope::kBias + ctx.vars.y * dx;
-            stack.push_back((fracStart & Slope::kMask) + dx - Slope::kOne);
-            return true;
-        }
-        case Operator::FracXWidth: {
-            i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
-            stack.push_back(dx);
-            return true;
-        }
+        case Operator::FracXStart: stack.push_back(ctx.slope.FracXStart(ctx.vars.y)); return true;
+        case Operator::FracXEnd: stack.push_back(ctx.slope.FracXEnd(ctx.vars.y)); return true;
+        case Operator::FracXWidth: stack.push_back(ctx.slope.DX()); return true;
 
-        case Operator::XStart: {
-            i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = divResult * ctx.vars.width;
-            stack.push_back((Slope::kBias + ctx.vars.y * dx) >> Slope::kFracBits);
+        case Operator::XStart: stack.push_back(ctx.slope.XStart(ctx.vars.y)); return true;
+        case Operator::XEnd: stack.push_back(ctx.slope.XEnd(ctx.vars.y)); return true;
+        case Operator::XWidth:
+            stack.push_back(ctx.slope.XEnd(ctx.vars.y) - ctx.slope.XStart(ctx.vars.y) + 1);
             return true;
-        }
-        case Operator::XEnd: {
-            i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = divResult * ctx.vars.width;
-            i32 fracStart = Slope::kBias + ctx.vars.y * dx;
-            stack.push_back(((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits);
-            return true;
-        }
 
-        case Operator::XWidth: {
-            i32 divResult = (Slope::kOne / ctx.vars.height);
-            i32 dx = divResult * ctx.vars.width;
-            i32 fracStart = Slope::kBias + ctx.vars.y * dx;
-            i32 xStart = fracStart >> Slope::kFracBits;
-            i32 xEnd = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
-            stack.push_back(xEnd - xStart + 1);
-            return true;
-        }
         case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBitsX; });
         case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
         case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
@@ -404,9 +368,14 @@ struct Evaluator {
         }
     }
 
-    void BeginEval(const DataPoint &dataPoint, bool positive, bool xMajor, bool left) {
+    void BeginEval(const DataPoint &dataPoint, bool positive, bool left) {
+        if (positive) {
+            ctx.slope.Setup(0, 0, dataPoint.width, dataPoint.height);
+        } else {
+            ctx.slope.Setup(dataPoint.width, 0, 0, dataPoint.height);
+        }
         ctx.stack.clear();
-        ctx.vars.Apply(dataPoint, positive, xMajor, left);
+        ctx.vars.Apply(dataPoint, left);
     }
 
     bool EvalOp(size_t index) {
@@ -449,8 +418,8 @@ struct Evaluator {
         return true;
     }
 
-    bool Eval(const DataPoint &dataPoint, bool positive, bool xMajor, bool left, i32 &result) {
-        if (!EvalCommon(dataPoint, positive, xMajor, left)) {
+    bool Eval(const DataPoint &dataPoint, bool positive, bool left, i32 &result) {
+        if (!EvalCommon(dataPoint, positive, left)) {
             return false;
         }
 
@@ -458,8 +427,8 @@ struct Evaluator {
         return true;
     }
 
-    bool EvalXMajor(const DataPoint &dataPoint, bool positive, bool xMajor, bool left, i32 &result) {
-        if (!EvalCommon(dataPoint, positive, xMajor, left)) {
+    bool EvalXMajor(const DataPoint &dataPoint, bool positive, bool left, i32 &result) {
+        if (!EvalCommon(dataPoint, positive, left)) {
             return false;
         }
 
@@ -481,8 +450,8 @@ struct Evaluator {
     }
 
 private:
-    bool EvalCommon(const DataPoint &dataPoint, bool positive, bool xMajor, bool left) {
-        BeginEval(dataPoint, positive, xMajor, left);
+    bool EvalCommon(const DataPoint &dataPoint, bool positive, bool left) {
+        BeginEval(dataPoint, positive, left);
         for (auto &op : ops) {
             if (!op.Execute(ctx)) {
                 return false;

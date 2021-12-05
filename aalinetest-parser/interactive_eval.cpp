@@ -120,8 +120,7 @@ public:
     template <typename Func>
     bool Eval(Group group, Func &&func) {
         for (auto &dataPoint : GetDataSet(group)) {
-            if (i32 result;
-                m_eval.Eval(dataPoint, GroupPositive(group), GroupXMajor(group), GroupLeft(group), result)) {
+            if (i32 result; m_eval.Eval(dataPoint, GroupPositive(group), GroupLeft(group), result)) {
                 func(dataPoint, result);
             } else {
                 return false;
@@ -134,8 +133,7 @@ public:
     bool Eval(Group group, i32 width, i32 height, Func &&func) {
         for (auto &dataPoint : GetDataSet(group)) {
             if (dataPoint.width == width && dataPoint.height == height) {
-                if (i32 result;
-                    m_eval.Eval(dataPoint, GroupPositive(group), GroupXMajor(group), GroupLeft(group), result)) {
+                if (i32 result; m_eval.Eval(dataPoint, GroupPositive(group), GroupLeft(group), result)) {
                     func(dataPoint, result);
                 } else {
                     return false;
@@ -173,7 +171,7 @@ public:
                 m_stepEvalGroup = group;
                 m_stepEvalDataPoint = dataPoint;
                 m_stepEval.ops = m_eval.ops;
-                m_stepEval.BeginEval(dataPoint, GroupPositive(group), GroupXMajor(group), GroupLeft(group));
+                m_stepEval.BeginEval(dataPoint, GroupPositive(group), GroupLeft(group));
                 return true;
             }
         }
@@ -184,8 +182,7 @@ public:
         if (m_stepEvalActive) {
             m_stepEvalIndex = 0;
             m_stepEval.ops = m_eval.ops;
-            m_stepEval.BeginEval(m_stepEvalDataPoint, GroupPositive(m_stepEvalGroup), GroupXMajor(m_stepEvalGroup),
-                                 GroupLeft(m_stepEvalGroup));
+            m_stepEval.BeginEval(m_stepEvalDataPoint, GroupPositive(m_stepEvalGroup), GroupLeft(m_stepEvalGroup));
         }
     }
 

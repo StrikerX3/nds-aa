@@ -55,7 +55,7 @@ void generateFunc(const std::vector<Operation> &templateOps, const std::vector<D
 
         bool valid = true;
         for (auto &dataPoint : dataPoints) {
-            if (i32 result; eval.EvalXMajor(dataPoint, true, true, true, result)) {
+            if (i32 result; eval.EvalXMajor(dataPoint, true, true, result)) {
                 if (result != dataPoint.expectedOutput) {
                     valid = false;
                     break;
@@ -83,7 +83,7 @@ void generateFunc(const std::vector<Operation> &templateOps, const std::vector<D
         eval.ops = resultOps;
         std::cout << "Actual results:\n";
         for (auto &dataPoint : dataPoints) {
-            if (i32 result; eval.EvalXMajor(dataPoint, true, true, true, result)) {
+            if (i32 result; eval.EvalXMajor(dataPoint, true, true, result)) {
                 std::cout << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x" << dataPoint.y
                           << "  " << result << (result == dataPoint.expectedOutput ? " == " : " != ")
                           << dataPoint.expectedOutput << "\n";
