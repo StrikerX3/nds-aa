@@ -3,9 +3,10 @@
 #include <iostream>
 #include <sstream>
 
-#include "extractor.h"
+#include "dataset.h"
 #include "file.h"
 #include "func_generator.h"
+#include "interactive_eval.h"
 #include "tester.h"
 
 int main1() {
@@ -42,13 +43,14 @@ int main1() {
 // --------------------------------------------------------------------------------
 
 int main2() {
-    extract("C:/temp");
+    extractDataSet("C:/temp");
     return EXIT_SUCCESS;
 }
 
 // --------------------------------------------------------------------------------
 
 int main() {
+    runInteractiveEvaluator("C:/temp");
     return EXIT_SUCCESS;
 }
 

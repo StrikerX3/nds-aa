@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "dataset.h"
 #include "slope.h"
 #include "types.h"
 
@@ -45,6 +46,13 @@ enum class Operator {
 struct Variables {
     i32 x, y;
     i32 width, height;
+
+    void Apply(const DataPoint &dataPoint) {
+        x = dataPoint.x;
+        y = dataPoint.y;
+        width = dataPoint.width;
+        height = dataPoint.height;
+    }
 };
 
 struct Context {
@@ -280,18 +288,5 @@ struct Evaluator {
         // result = ctx.stack.back();
 
         return true;
-    }
-};
-
-struct DataPoint {
-    i32 x, y;
-    i32 width, height;
-    i32 expectedOutput;
-
-    void ApplyVars(Variables &vars) const {
-        vars.x = x;
-        vars.y = y;
-        vars.width = width;
-        vars.height = height;
     }
 };

@@ -53,7 +53,7 @@ void generateFunc(const std::vector<Operation> &templateOps, const std::vector<D
 
         bool valid = true;
         for (auto &dataPoint : dataPoints) {
-            dataPoint.ApplyVars(eval.ctx.vars);
+            eval.ctx.vars.Apply(dataPoint);
             if (i32 result; eval.Eval(result)) {
                 // result = (result >> Slope::kAAFracBitsX) % Slope::kAARange;
                 // result = result % Slope::kAARange;
@@ -84,7 +84,7 @@ void generateFunc(const std::vector<Operation> &templateOps, const std::vector<D
         eval.ops = resultOps;
         std::cout << "Actual results:\n";
         for (auto &dataPoint : dataPoints) {
-            dataPoint.ApplyVars(eval.ctx.vars);
+            eval.ctx.vars.Apply(dataPoint);
             if (i32 result; eval.Eval(result)) {
                 // result = (result >> Slope::kAAFracBitsX) % Slope::kAARange;
                 // result = result % Slope::kAARange;

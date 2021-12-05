@@ -141,16 +141,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="extractor.cpp" />
+    <ClCompile Include="dataset.cpp" />
     <ClCompile Include="func_generator.cpp" />
+    <ClCompile Include="interactive_eval.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tester.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="extractor.h" />
+    <ClInclude Include="dataset.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="func.h" />
     <ClInclude Include="func_generator.h" />
+    <ClInclude Include="interactive_eval.h" />
     <ClInclude Include="slope.h" />
     <ClInclude Include="tester.h" />
     <ClInclude Include="types.h" />

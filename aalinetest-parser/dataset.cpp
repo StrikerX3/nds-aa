@@ -1,9 +1,9 @@
-#include "extractor.h"
+#include "dataset.h"
 
 #include "file.h"
 #include "slope.h"
 
-void extract(std::filesystem::path root) {
+void extractDataSet(std::filesystem::path root) {
     auto dataT = readFile(root / "T.bin");
     auto dataB = readFile(root / "B.bin");
 
@@ -39,14 +39,14 @@ void extract(std::filesystem::path root) {
         }
     };
 
-    Output outLPX{"C:/temp/LPX.bin"};
-    Output outLPY{"C:/temp/LPY.bin"};
-    Output outLNX{"C:/temp/LNX.bin"};
-    Output outLNY{"C:/temp/LNY.bin"};
-    Output outRPX{"C:/temp/RPX.bin"};
-    Output outRPY{"C:/temp/RPY.bin"};
-    Output outRNX{"C:/temp/RNX.bin"};
-    Output outRNY{"C:/temp/RNY.bin"};
+    Output outLPX{root / "LPX.bin"};
+    Output outLPY{root / "LPY.bin"};
+    Output outLNX{root / "LNX.bin"};
+    Output outLNY{root / "LNY.bin"};
+    Output outRPX{root / "RPX.bin"};
+    Output outRPY{root / "RPY.bin"};
+    Output outRNX{root / "RNX.bin"};
+    Output outRNY{root / "RNY.bin"};
 
     i32 minY = std::max(dataT->minY, dataB->minY);
     i32 maxY = std::min(dataT->maxY, dataB->maxY);
@@ -143,4 +143,46 @@ void extract(std::filesystem::path root) {
             }
         }
     }
+}
+
+std::vector<DataPoint> loadOne(std::filesystem::path file) {
+    std::ifstream in{file, std::ios::binary};
+    std::vector<DataPoint> dataset;
+
+    while (in) {
+        u16 width, height;
+        in.read((char *)&width, sizeof(u16));
+        in.read((char *)&height, sizeof(u16));
+
+        u32 entry;
+        for (;;) {
+            in.read((char *)&entry, sizeof(u32));
+            if (entry == 0xFFFFFFFF) {
+                break;
+            }
+            u16 x = (entry >> 0);
+            u8 y = (entry >> 16);
+            u8 cov = (entry >> 24);
+            dataset.push_back(DataPoint{
+                .x = x,
+                .y = y,
+                .width = width,
+                .height = height,
+                .expectedOutput = cov,
+            });
+        }
+    }
+
+    return dataset;
+}
+
+DataSet loadDataSet(std::filesystem::path root) {
+    return DataSet{.lpx = loadOne(root / "LPX.bin"),
+                   .lpy = loadOne(root / "LPY.bin"),
+                   .lnx = loadOne(root / "LNX.bin"),
+                   .lny = loadOne(root / "LNY.bin"),
+                   .rpx = loadOne(root / "RPX.bin"),
+                   .rpy = loadOne(root / "RPY.bin"),
+                   .rnx = loadOne(root / "RNX.bin"),
+                   .rny = loadOne(root / "RNY.bin")};
 }

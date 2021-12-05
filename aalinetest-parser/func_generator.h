@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dataset.h"
 #include "func.h"
 
 #include <vector>

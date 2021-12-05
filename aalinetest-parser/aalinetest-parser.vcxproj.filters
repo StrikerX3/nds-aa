@@ -21,10 +21,13 @@
     <ClCompile Include="tester.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="extractor.cpp">
+    <ClCompile Include="dataset.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="func_generator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="interactive_eval.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,13 +44,16 @@
     <ClInclude Include="file.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="extractor.h">
+    <ClInclude Include="dataset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="func_generator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="interactive_eval.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
