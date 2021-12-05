@@ -41,6 +41,7 @@ enum class Operator {
     Not,
     Dup,
     Swap,
+    Drop,
 };
 
 struct Variables {
@@ -72,7 +73,6 @@ struct Operation {
     union {
         Operator op;
         i32 constVal;
-        i32 varId;
     };
 
     std::string Str() {
@@ -111,6 +111,7 @@ struct Operation {
             case Operator::Not: return "not";
             case Operator::Dup: return "dup";
             case Operator::Swap: return "swap";
+            case Operator::Drop: return "drop";
             }
             return "(invalid op)";
         case Type::Constant:
@@ -231,6 +232,13 @@ private:
                 return false;
             } else {
                 std::swap(stack[stack.size() - 1], stack[stack.size() - 2]);
+                return true;
+            }
+        case Operator::Drop:
+            if (stack.size() < 1) {
+                return false;
+            } else {
+                stack.pop_back();
                 return true;
             }
         }

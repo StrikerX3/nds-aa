@@ -13,6 +13,12 @@ std::string Uppercase(std::string str) {
     return out;
 }
 
+std::string Lowercase(std::string str) {
+    std::string out;
+    std::transform(str.begin(), str.end(), std::back_inserter(out), [](auto c) { return std::tolower(c); });
+    return out;
+}
+
 enum class Group { LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY };
 
 constexpr Group kGroups[] = {Group::LPX, Group::LPY, Group::LNX, Group::LNY,
@@ -182,18 +188,136 @@ void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
     }
 }
 
+void func(InteractiveContext &ctx, const std::vector<std::string> &) {
+    size_t i = 0;
+    for (auto &op : ctx.eval.Operations()) {
+        std::cout << i << ": " << op.Str() << "\n";
+        i++;
+    }
+}
+
+void addOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    static auto opTemplates = [] {
+        std::map<std::string, Operation> templates;
+        templates.insert({"add", {.type = Operation::Type::Operator, .op = Operator::Add}});
+        templates.insert({"sub", {.type = Operation::Type::Operator, .op = Operator::Subtract}});
+        templates.insert({"mul", {.type = Operation::Type::Operator, .op = Operator::Multiply}});
+        templates.insert({"div", {.type = Operation::Type::Operator, .op = Operator::Divide}});
+        templates.insert({"mod", {.type = Operation::Type::Operator, .op = Operator::Modulo}});
+        templates.insert({"neg", {.type = Operation::Type::Operator, .op = Operator::Negate}});
+        templates.insert({"shl", {.type = Operation::Type::Operator, .op = Operator::LeftShift}});
+        templates.insert({"sar", {.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift}});
+        templates.insert({"shr", {.type = Operation::Type::Operator, .op = Operator::LogicRightShift}});
+        templates.insert({"and", {.type = Operation::Type::Operator, .op = Operator::And}});
+        templates.insert({"or", {.type = Operation::Type::Operator, .op = Operator::Or}});
+        templates.insert({"xor", {.type = Operation::Type::Operator, .op = Operator::Xor}});
+        templates.insert({"not", {.type = Operation::Type::Operator, .op = Operator::Not}});
+        templates.insert({"dup", {.type = Operation::Type::Operator, .op = Operator::Dup}});
+        templates.insert({"swap", {.type = Operation::Type::Operator, .op = Operator::Swap}});
+        templates.insert({"drop", {.type = Operation::Type::Operator, .op = Operator::Drop}});
+
+        templates.insert({"frac_x_start", {.type = Operation::Type::Operator, .op = Operator::FracXStart}});
+        templates.insert({"frac_x_end", {.type = Operation::Type::Operator, .op = Operator::FracXEnd}});
+        templates.insert({"x_start", {.type = Operation::Type::Operator, .op = Operator::XStart}});
+        templates.insert({"x_end", {.type = Operation::Type::Operator, .op = Operator::XEnd}});
+        templates.insert({"x_width", {.type = Operation::Type::Operator, .op = Operator::XWidth}});
+        templates.insert({"expand_aa_bits", {.type = Operation::Type::Operator, .op = Operator::ExpandAABits}});
+        templates.insert({"mul_width", {.type = Operation::Type::Operator, .op = Operator::MulWidth}});
+        templates.insert({"mul_height", {.type = Operation::Type::Operator, .op = Operator::MulHeight}});
+        templates.insert({"div_width", {.type = Operation::Type::Operator, .op = Operator::DivWidth}});
+        templates.insert({"div_height", {.type = Operation::Type::Operator, .op = Operator::DivHeight}});
+        templates.insert({"div_2", {.type = Operation::Type::Operator, .op = Operator::Div2}});
+        templates.insert(
+            {"mul_height_div_width_aa", {.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA}});
+
+        templates.insert({"push_x", {.type = Operation::Type::Operator, .op = Operator::PushX}});
+        templates.insert({"push_y", {.type = Operation::Type::Operator, .op = Operator::PushY}});
+        templates.insert({"push_width", {.type = Operation::Type::Operator, .op = Operator::PushWidth}});
+        templates.insert({"push_height", {.type = Operation::Type::Operator, .op = Operator::PushHeight}});
+
+        return templates;
+    }();
+
+    if (args.size() < 1) {
+        std::cout << "Missing argument: op\n";
+        std::cout << "Usage: addop op [op ...] [pos]\n";
+        std::cout << "  op can be one of:";
+        for (auto &[name, _] : opTemplates) {
+            std::cout << " " << name;
+        }
+        std::cout << "\n  or const_#, where # is any valid signed 32-bit integer\n";
+        return;
+    }
+
+    auto &ops = ctx.eval.Operations();
+    size_t pos = ops.size();
+    size_t opsEnd = args.size();
+    if (args.size() >= 2) {
+        try {
+            int newPos = std::stoi(args.back());
+            if (newPos >= 0) {
+                pos = newPos;
+            }
+            if (pos > ops.size()) {
+                pos = ops.size();
+            }
+            opsEnd--;
+        } catch (...) {
+            // ignore; likely just an op instead
+        }
+    }
+
+    std::vector<Operation> newOps;
+    for (size_t k = 0; k < opsEnd; k++) {
+        auto op = Lowercase(args[k]);
+        Operation operation;
+        if (opTemplates.contains(op)) {
+            operation = opTemplates.at(op);
+        } else if (op.starts_with("const_")) {
+            auto num = op.substr(6);
+            operation.type = Operation::Type::Constant;
+            operation.constVal = std::stoi(num);
+        } else {
+            std::cout << "Invalid operation: \"" << op << "\"\n";
+        }
+        newOps.push_back(operation);
+    }
+    ops.insert(ops.begin() + pos, newOps.begin(), newOps.end());
+
+    {
+        size_t i = 0;
+        for (auto &op : ctx.eval.Operations()) {
+            if (i >= pos && i < pos + newOps.size()) {
+                std::cout << "=> ";
+            } else {
+                std::cout << "   ";
+            }
+            std::cout << i << ": " << op.Str() << "\n";
+            i++;
+        }
+    }
+}
+
 } // namespace command
 
 void initCommands() {
     commands.clear();
-    commands.insert({"q", {command::quit, "Quits the interactive evaluator"}});
-    commands.insert({"exit", {command::quit, "Quits the interactive evaluator"}});
-    commands.insert({"quit", {command::quit, "Quits the interactive evaluator"}});
-    commands.insert({"h", {command::help, "Displays this help text"}});
-    commands.insert({"help", {command::help, "Displays this help text"}});
-    commands.insert({"eval",
-                     {command::eval, "Evaluates the current function against the entire data set or a subset (LPX, "
-                                     "LPY, LNX, LNY, RPX, RPY, RNX, RNY)"}});
+
+    auto add = [&](std::initializer_list<std::string> aliases, Command command) {
+        for (auto &alias : aliases) {
+            commands.insert({Lowercase(alias), command});
+        }
+    };
+
+    add({"q", "exit", "quit"}, {command::quit, "Quits the interactive evaluator."});
+    add({"h", "help"}, {command::help, "Displays this help text."});
+    add({"eval"}, {command::eval, "Evaluates the current function against the entire data set or a subset.\n"
+                                  "Valid groups are LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
+    add({"func", "fn"}, {command::func, "Displays the current function."});
+    add({"addop"}, {command::addOp, "Adds an operation to the function.\n"
+                                    "  Arguments: op [op ...] [pos = -1]\n"
+                                    "    op: operator(s) to add\n"
+                                    "    pos: position to insert the operator at (-1 inserts at the end)"});
 }
 
 struct CommandLine {
@@ -240,7 +364,7 @@ void runInteractiveEvaluator(std::filesystem::path root) {
         std::cout << "> ";
         std::getline(std::cin, input);
         auto cmdLine = ParseCommandLine(input);
-        if (commands.contains(cmdLine.cmd)) {
+        if (commands.contains(Lowercase(cmdLine.cmd))) {
             commands.at(cmdLine.cmd).func(ctx, cmdLine.args);
         } else if (!cmdLine.cmd.empty()) {
             std::cout << "Unknown command \"" << cmdLine.cmd << "\"";
