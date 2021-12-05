@@ -384,10 +384,10 @@ int mainX() {
 // --------------------------------------------------------------------------------
 
 int main() {
-    // auto dataT = readFile("C:/temp/T.bin");
-    // auto dataB = readFile("C:/temp/B.bin");
-    auto dataL = readFile("C:/temp/L.bin");
-    auto dataR = readFile("C:/temp/R.bin");
+    auto dataT = readFile("C:/temp/T.bin");
+    auto dataB = readFile("C:/temp/B.bin");
+    // auto dataL = readFile("C:/temp/L.bin");
+    // auto dataR = readFile("C:/temp/R.bin");
 
     struct Output {
         Output(std::filesystem::path path)
@@ -430,23 +430,23 @@ int main() {
     Output outRNX{"C:/temp/RNX.bin"};
     Output outRNY{"C:/temp/RNY.bin"};
 
-    i32 minY = std::max(dataL->minY, dataR->minY);
-    i32 maxY = std::min(dataL->maxY, dataR->maxY);
-    i32 minX = std::max(dataL->minX, dataR->minX);
-    i32 maxX = std::min(dataL->maxX, dataR->maxX);
+    i32 minY = std::max(dataT->minY, dataB->minY);
+    i32 maxY = std::min(dataT->maxY, dataB->maxY);
+    i32 minX = std::max(dataT->minX, dataB->minX);
+    i32 maxX = std::min(dataT->maxX, dataB->maxX);
 
     for (i32 y = minY; y <= maxY; y++) {
         for (i32 x = minX; x <= maxX; x++) {
             // Create and configure the slopes
             struct SlopeCoords {
-                i32 startX, endX;
-                i32 startY, endY;
+                i32 startX, startY;
+                i32 endX, endY;
             };
 
-            SlopeCoords lltCoords{0, x, 0, y};
-            SlopeCoords lrbCoords{0, x, 192, y};
-            SlopeCoords rltCoords{256, x, 0, y};
-            SlopeCoords rrbCoords{256, x, 192, y};
+            SlopeCoords tltCoords{0, 0, x, y};
+            SlopeCoords trbCoords{256, 0, x, y};
+            SlopeCoords bltCoords{0, 192, x, y};
+            SlopeCoords brbCoords{256, 192, x, y};
 
             auto adjustY = [&](SlopeCoords &coords) {
                 if (coords.startY > coords.endY) {
@@ -455,19 +455,19 @@ int main() {
                     std::swap(coords.startY, coords.endY);
                 }
             };
-            adjustY(lltCoords);
-            adjustY(lrbCoords);
-            adjustY(rltCoords);
-            adjustY(rrbCoords);
+            adjustY(tltCoords);
+            adjustY(trbCoords);
+            adjustY(bltCoords);
+            adjustY(brbCoords);
 
-            Slope lltSlope{}; // left LT
-            Slope lrbSlope{}; // left RB
-            Slope rltSlope{}; // right LT
-            Slope rrbSlope{}; // right RB
-            lltSlope.Setup(lltCoords.startX, lltCoords.startY, lltCoords.endX, lltCoords.endY);
-            lrbSlope.Setup(lrbCoords.startX, lrbCoords.startY, lrbCoords.endX, lrbCoords.endY);
-            rltSlope.Setup(rltCoords.startX, rltCoords.startY, rltCoords.endX, rltCoords.endY);
-            rrbSlope.Setup(rrbCoords.startX, rrbCoords.startY, rrbCoords.endX, rrbCoords.endY);
+            Slope tltSlope{}; // top LT
+            Slope trbSlope{}; // top RB
+            Slope bltSlope{}; // bottom LT
+            Slope brbSlope{}; // bottom RB
+            tltSlope.Setup(tltCoords.startX, tltCoords.startY, tltCoords.endX, tltCoords.endY);
+            trbSlope.Setup(trbCoords.startX, trbCoords.startY, trbCoords.endX, trbCoords.endY);
+            bltSlope.Setup(bltCoords.startX, bltCoords.startY, bltCoords.endX, bltCoords.endY);
+            brbSlope.Setup(brbCoords.startX, brbCoords.startY, brbCoords.endX, brbCoords.endY);
 
             auto calcSlope = [&](i32 xOffset, i32 startY, i32 yy, const Data &data, const Slope &slope, Output &out) {
                 // Skip diagonals and perfect horizontals/verticals
@@ -511,21 +511,17 @@ int main() {
             };
 
             // Generate slopes and write coverage values to the corresponding data set
-            const i32 lStartY = std::max(lltCoords.startY, rltCoords.startY);
-            const i32 lEndY = std::min(lltCoords.endY, rltCoords.endY);
-            for (i32 yy = lStartY; yy < lEndY; yy++) {
-                calcSlope(std::min(lltCoords.startX, lltCoords.endX), lStartY, yy, *dataL, lltSlope,
-                          lltSlope.IsXMajor() ? outRPX : outRPY);
-                calcSlope(std::min(rltCoords.startX, rltCoords.endX), lStartY, yy, *dataR, rltSlope,
-                          rltSlope.IsXMajor() ? outLNX : outLNY);
+            for (i32 yy = 0; yy < y; yy++) {
+                calcSlope(std::min(tltCoords.startX, tltCoords.endX), 0, yy, *dataT, tltSlope,
+                          tltSlope.IsXMajor() ? outLPX : outLPY);
+                calcSlope(std::min(trbCoords.startX, trbCoords.endX), 0, yy, *dataT, trbSlope,
+                          trbSlope.IsXMajor() ? outRNX : outRNY);
             }
-            const i32 rStartY = std::max(lrbCoords.startY, rrbCoords.startY);
-            const i32 rEndY = std::min(lrbCoords.endY, rrbCoords.endY);
-            for (i32 yy = rStartY; yy < rEndY; yy++) {
-                calcSlope(std::min(lrbCoords.startX, lrbCoords.endX), rStartY, yy, *dataL, lrbSlope,
-                          lrbSlope.IsXMajor() ? outRNX : outRNY);
-                calcSlope(std::min(rrbCoords.startX, rrbCoords.endX), rStartY, yy, *dataR, rrbSlope,
-                          rrbSlope.IsXMajor() ? outLPX : outLPY);
+            for (i32 yy = y; yy < 192; yy++) {
+                calcSlope(std::min(bltCoords.startX, bltCoords.endX), y, yy, *dataB, bltSlope,
+                          bltSlope.IsXMajor() ? outLNX : outLNY);
+                calcSlope(std::min(brbCoords.startX, brbCoords.endX), y, yy, *dataB, brbSlope,
+                          brbSlope.IsXMajor() ? outRPX : outRPY);
             }
         }
     }
