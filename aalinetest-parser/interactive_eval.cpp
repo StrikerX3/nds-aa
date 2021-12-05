@@ -322,6 +322,7 @@ void evaluate(InteractiveEvaluator &eval, Group group, i32 width, i32 height) {
 struct InteractiveContext {
     InteractiveEvaluator eval;
     bool running = true;
+    std::filesystem::path lastLoadedFormulaPath;
 };
 
 using FnCommand = void (*)(InteractiveContext &ctx, const std::vector<std::string> &args);
@@ -347,10 +348,28 @@ size_t longestCommand;
 
 namespace util {
 
-void displayFunc(const std::vector<Operation> &ops, std::string marker = "", size_t markerStart = ~0,
-                 size_t markerEnd = 0) {
+void displayDataSetInfo(InteractiveEvaluator &eval, Group group) {
+    auto &dataset = eval.GetDataSet(group);
+    if (!dataset.empty()) {
+        std::cout << "  " << GroupName(group) << ": " << dataset.size() << " entries\n";
+    }
+}
+
+void displayDataSets(InteractiveEvaluator &eval) {
+    std::cout << "Loaded data sets:\n";
+    for (auto group : kGroups) {
+        util::displayDataSetInfo(eval, group);
+    }
+}
+
+void displayFormula(const std::vector<Operation> &ops, std::string marker = "", size_t markerStart = ~0,
+                    size_t markerEnd = 0) {
     size_t i = 0;
     std::string spaces(marker.size(), ' ');
+    if (ops.empty()) {
+        std::cout << spaces << "(empty)\n";
+        return;
+    }
     for (auto &op : ops) {
         if (i >= markerStart && i < markerEnd) {
             std::cout << marker;
@@ -394,11 +413,11 @@ void displayStepEvalState(InteractiveEvaluator &eval) {
     std::cout << "  Evaluating data point " << dataPoint.KeyStr() << " of group " << GroupName(eval.StepEvalGroup())
               << "\n";
     std::cout << "Operations:\n";
-    util::displayFunc(eval.StepEvalOperations(), "=> ", eval.StepEvalIndex(), eval.StepEvalIndex() + 1);
+    util::displayFormula(eval.StepEvalOperations(), "=> ", eval.StepEvalIndex(), eval.StepEvalIndex() + 1);
     std::cout << "Stack:\n";
     size_t i = 0;
     for (auto num : eval.StepEvalStack()) {
-        std::cout << "   " << i << ": " << num << "\n";
+        std::cout << "   " << (eval.StepEvalStack().size() - i - 1) << ": " << num << "\n";
         i++;
     }
     if (i32 result; eval.StepEvalResult(result)) {
@@ -444,6 +463,21 @@ void help(InteractiveContext &, const std::vector<std::string> &) {
             }
             std::cout << line << "\n";
         }
+    }
+}
+
+void info(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    util::displayDataSets(ctx.eval);
+
+    std::cout << "Current formula:\n";
+    util::displayFormula(ctx.eval.Operations(), "   ");
+
+    if (!ctx.lastLoadedFormulaPath.empty()) {
+        std::cout << "Formula loaded from " << ctx.lastLoadedFormulaPath << "\n";
+    }
+
+    if (ctx.eval.IsStepping()) {
+        util::displayStepEvalState(ctx.eval);
     }
 }
 
@@ -582,53 +616,14 @@ void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
 }
 
 void func(InteractiveContext &ctx, const std::vector<std::string> &) {
-    util::displayFunc(ctx.eval.Operations(), "   ");
+    util::displayFormula(ctx.eval.Operations(), "   ");
 }
 
 auto opTemplates = [] {
     std::map<std::string, Operation> templates;
-    templates.insert({"add", {.type = Operation::Type::Operator, .op = Operator::Add}});
-    templates.insert({"sub", {.type = Operation::Type::Operator, .op = Operator::Subtract}});
-    templates.insert({"mul", {.type = Operation::Type::Operator, .op = Operator::Multiply}});
-    templates.insert({"div", {.type = Operation::Type::Operator, .op = Operator::Divide}});
-    templates.insert({"mod", {.type = Operation::Type::Operator, .op = Operator::Modulo}});
-    templates.insert({"neg", {.type = Operation::Type::Operator, .op = Operator::Negate}});
-    templates.insert({"shl", {.type = Operation::Type::Operator, .op = Operator::LeftShift}});
-    templates.insert({"sar", {.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift}});
-    templates.insert({"shr", {.type = Operation::Type::Operator, .op = Operator::LogicRightShift}});
-    templates.insert({"and", {.type = Operation::Type::Operator, .op = Operator::And}});
-    templates.insert({"or", {.type = Operation::Type::Operator, .op = Operator::Or}});
-    templates.insert({"xor", {.type = Operation::Type::Operator, .op = Operator::Xor}});
-    templates.insert({"not", {.type = Operation::Type::Operator, .op = Operator::Not}});
-
-    templates.insert({"dup", {.type = Operation::Type::Operator, .op = Operator::Dup}});
-    templates.insert({"swap", {.type = Operation::Type::Operator, .op = Operator::Swap}});
-    templates.insert({"drop", {.type = Operation::Type::Operator, .op = Operator::Drop}});
-    templates.insert({"rot", {.type = Operation::Type::Operator, .op = Operator::Rot}});
-
-    templates.insert({"push_frac_x_start", {.type = Operation::Type::Operator, .op = Operator::FracXStart}});
-    templates.insert({"push_frac_x_end", {.type = Operation::Type::Operator, .op = Operator::FracXEnd}});
-    templates.insert({"push_frac_x_width", {.type = Operation::Type::Operator, .op = Operator::FracXWidth}});
-    templates.insert({"push_x_start", {.type = Operation::Type::Operator, .op = Operator::XStart}});
-    templates.insert({"push_x_end", {.type = Operation::Type::Operator, .op = Operator::XEnd}});
-    templates.insert({"push_x_width", {.type = Operation::Type::Operator, .op = Operator::XWidth}});
-    templates.insert({"insert_aa_frac_bits", {.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits}});
-    templates.insert({"mul_width", {.type = Operation::Type::Operator, .op = Operator::MulWidth}});
-    templates.insert({"mul_height", {.type = Operation::Type::Operator, .op = Operator::MulHeight}});
-    templates.insert({"div_width", {.type = Operation::Type::Operator, .op = Operator::DivWidth}});
-    templates.insert({"div_height", {.type = Operation::Type::Operator, .op = Operator::DivHeight}});
-    templates.insert({"div_2", {.type = Operation::Type::Operator, .op = Operator::Div2}});
-    templates.insert(
-        {"mul_height_div_width_aa", {.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA}});
-
-    templates.insert({"push_x", {.type = Operation::Type::Operator, .op = Operator::PushX}});
-    templates.insert({"push_y", {.type = Operation::Type::Operator, .op = Operator::PushY}});
-    templates.insert({"push_width", {.type = Operation::Type::Operator, .op = Operator::PushWidth}});
-    templates.insert({"push_height", {.type = Operation::Type::Operator, .op = Operator::PushHeight}});
-    templates.insert({"push_pos_neg", {.type = Operation::Type::Operator, .op = Operator::PushPosNeg}});
-    templates.insert({"push_xy_major", {.type = Operation::Type::Operator, .op = Operator::PushXYMajor}});
-    templates.insert({"push_left_right", {.type = Operation::Type::Operator, .op = Operator::PushLeftRight}});
-
+    for (auto op : kOperators) {
+        templates.insert({OperatorName(op), {.type = Operation::Type::Operator, .op = op}});
+    }
     return templates;
 }();
 
@@ -687,7 +682,7 @@ void addOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
     }
     ops.insert(ops.begin() + pos, newOps.begin(), newOps.end());
 
-    util::displayFunc(ops, "=> ", pos, pos + newOps.size());
+    util::displayFormula(ops, "=> ", pos, pos + newOps.size());
     std::cout << newOps.size() << " operations inserted\n";
 }
 
@@ -724,8 +719,9 @@ void delOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
         }
     }
 
-    util::displayFunc(ops, "<= ", pos, pos + count);
+    util::displayFormula(ops, "<= ", pos, pos + count);
     ops.erase(ops.begin() + pos, ops.begin() + pos + count);
+    std::cout << count << " operations removed\n";
 }
 
 void clear(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -733,14 +729,21 @@ void clear(InteractiveContext &ctx, const std::vector<std::string> &args) {
 }
 
 void save(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    std::filesystem::path path;
     if (args.size() < 1) {
-        std::cout << "Missing argument: path\n";
-        std::cout << "Usage: save path\n";
-        return;
+        if (ctx.lastLoadedFormulaPath.empty()) {
+            std::cout << "Missing argument: path\n";
+            std::cout << "Usage: save path\n";
+            return;
+        } else {
+            path = ctx.lastLoadedFormulaPath;
+        }
+    } else {
+        path = args[0];
     }
 
     auto &ops = ctx.eval.Operations();
-    std::ofstream out{args[0]};
+    std::ofstream out{path};
     for (auto &op : ops) {
         out << op.Str() << " ";
     }
@@ -748,22 +751,30 @@ void save(InteractiveContext &ctx, const std::vector<std::string> &args) {
 }
 
 void load(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    std::filesystem::path path;
     if (args.size() < 1) {
-        std::cout << "Missing argument: path\n";
-        std::cout << "Usage: load path\n";
-        return;
+        if (ctx.lastLoadedFormulaPath.empty()) {
+            std::cout << "Missing argument: path\n";
+            std::cout << "Usage: load path\n";
+            return;
+        } else {
+            path = ctx.lastLoadedFormulaPath;
+        }
+    } else {
+        path = args[0];
     }
 
     auto &ops = ctx.eval.Operations();
     ops.clear();
-    std::ifstream in{args[0]};
+    std::ifstream in{path};
     std::string opStr;
     while (in >> opStr) {
         auto op = Lowercase(opStr);
         parseAndAddOp(ops, op);
     }
     std::cout << "Formula loaded from \"" << args[0] << "\"\n";
-    util::displayFunc(ops, "   ");
+    util::displayFormula(ops, "   ");
+    ctx.lastLoadedFormulaPath = args[0];
 }
 
 void dump(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -810,6 +821,7 @@ void initCommands() {
 
     add({"q", "exit", "quit"}, command::quit, "Quits the interactive evaluator.");
     add({"h", "help"}, command::help, "Displays this help text.");
+    add({"i", "info"}, command::info, "Displays evaluator information.");
     add({"se", "stepeval"}, command::stepEval,
         "Begins evaluating the current formula in step-by-step mode.\n"
         "  Arguments: group width height x y\n"
@@ -829,10 +841,10 @@ void initCommands() {
         "  Arguments: [group] [width height] [group [width height] ...]\n"
         "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
         "    width and height: specify the size of the slope to evaluate.\n"
-        "    If executed without arguments, evaluates all groups and dumps the first ten mismatches of each group.\n"
-        "    If executed with the group argument, evaluates that group and dumps the first ten mismatches.\n"
-        "    If executed with all arguments, evaluates that specific slope size and dumps all results.\n"
-        "    Multiple data set may be evaluated by passing additional groups and optional slope sizes.\n");
+        "  If executed without arguments, evaluates all groups and dumps the first ten mismatches of each group.\n"
+        "  If executed with the group argument, evaluates that group and dumps the first ten mismatches.\n"
+        "  If executed with all arguments, evaluates that specific slope size and dumps all results.\n"
+        "  Multiple data set may be evaluated by passing additional groups and optional slope sizes.\n");
     add({"f", "fn", "func"}, command::func, "Displays the current formula.");
     add({"addop"}, command::addOp,
         "Adds one or more operations to the formula.\n"
@@ -848,11 +860,15 @@ void initCommands() {
     add({"save"}, command::save,
         "Saves the current formula to a file.\n"
         "  Arguments: path\n"
-        "    path: path to the file where the formula will be saved");
+        "    path: path to the file where the formula will be saved.\n"
+        "  The path may be omitted if a formula was loaded with \"load\".\n"
+        "  If omitted, the formula will be saved to the last loaded file.");
     add({"load"}, command::load,
         "Loads a formula from a file.\n"
         "  Arguments: path\n"
-        "    path: path to the file where the formula will be loaded");
+        "    path: path to the file where the formula will be loaded\n"
+        "  The path may be omitted if a formula was loaded with this command.\n"
+        "  If omitted, the command will reload the formula from the last loaded file, if any.");
     add({"dump"}, command::dump,
         "Dumps a portion of the data set.\n"
         "  Arguments: group width height\n"
@@ -892,9 +908,10 @@ void runInteractiveEvaluator(std::filesystem::path root) {
         initCommands();
     }
 
-    std::cout << "Please wait, loading data set...";
+    std::cout << "Please wait, loading data sets...";
     InteractiveContext ctx{.eval{loadDataSet(root)}};
     std::cout << " OK\n";
+    util::displayDataSets(ctx.eval);
 
     std::cout << "Interactive evaluator ready\n";
     std::cout << "Type \"help\" for commands\n";
