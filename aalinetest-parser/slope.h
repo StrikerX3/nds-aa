@@ -142,6 +142,7 @@ public:
         m_negative = (x1 < x0);
         if (m_negative) {
             m_x0--;
+            m_width = -m_width;
             std::swap(x0, x1);
         }
 
@@ -275,6 +276,22 @@ public:
     }
 
     /// <summary>
+    /// Returns the width of the slope (X1 - X0).
+    /// </summary>
+    /// <returns>The width of the slope</returns>
+    constexpr i32 Width() const {
+        return m_width;
+    }
+
+    /// <summary>
+    /// Returns the height of the slope (Y1 - Y0).
+    /// </summary>
+    /// <returns>The height of the slope</returns>
+    constexpr i32 Height() const {
+        return m_height;
+    }
+
+    /// <summary>
     /// Retrieves the antialiasing coverage initial bias.
     /// </summary>
     /// <returns>The initial value of the antialiasing coverage</returns>
@@ -392,12 +409,39 @@ public:
                 m_negative ? (fracCoverage - m_aaBias - 1) % kAABaseX : (fracCoverage + m_aaBias) % kAABaseX;
             return finalCoverage;*/
 
+            // TODO: brute-force formula
+            // - build full data set from existing data
+            //   - data sets:
+            //     - left positive X-major
+            //     - left positive Y-major
+            //     - left negative X-major
+            //     - left negative Y-major
+            //     - right positive X-major
+            //     - right positive Y-major
+            //     - right negative X-major
+            //     - right negative Y-major
+            //   - contents:
+            //     - input: width,height; x,y coordinates (using slope generator)
+            //     - output: expected coverage value at x,y (including zeros)
+            // - make a function generator
+            //   - supported operations: + - * / % >> << & | ^ ~ -(unary)  (all on i32)
+            //   - variables: all input values above, plus some constants:
+            //     - 1 (useful in many cases)
+            //     - 32 (antialiasing coverage range)
+            //     - 18 (fractional x coordinate bits)
+            //     - 9 (half of fractional x coordinate bits)
+            //     - 5 (fractional antialiasing coverage bits)
+            //   - stack-based
+            //     - variables are pushed onto the stack
+            //     - operators pop one or two values from the stack and push the result
+            //   - stop condition: when a function perfectly matches the input/output set
+
             // TODO: negative slopes
             const i32 startX = XStart(y);
             const i32 endX = XEnd(y);
             const i32 deltaX = endX - startX + 1;
-            const i32 baseCoverage = ((startX * m_height * 32) << kAAFracBitsX) / m_width;
-            const i32 fullCoverage = ((deltaX * m_height * 32) << kAAFracBitsX) / m_width;
+            const i32 baseCoverage = ((startX * m_height * kAARange) << kAAFracBitsX) / m_width;
+            const i32 fullCoverage = ((deltaX * m_height * kAARange) << kAAFracBitsX) / m_width;
             const i32 coverageStep = fullCoverage / deltaX;
             const i32 coverageBias = coverageStep / 2;
             const i32 offset = x - startX;

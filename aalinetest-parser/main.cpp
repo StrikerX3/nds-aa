@@ -139,12 +139,13 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
 
     Slope ltSlope; // left or top
     Slope rbSlope; // right or bottom
-    i32 ltOriginX = (data.type != TEST_RIGHT) ? 0 : 255;
-    i32 ltOriginY = (data.type != TEST_BOTTOM) ? 0 : 191;
-    i32 rbOriginX = (data.type != TEST_LEFT) ? 255 : 0;
-    i32 rbOriginY = (data.type != TEST_TOP) ? 191 : 0;
+    i32 ltOriginX = (data.type != TEST_RIGHT) ? 0 : 256;
+    i32 ltOriginY = (data.type != TEST_BOTTOM) ? 0 : 192;
+    i32 rbOriginX = (data.type != TEST_LEFT) ? 256 : 0;
+    i32 rbOriginY = (data.type != TEST_TOP) ? 192 : 0;
     ltSlope.Setup(ltOriginX, ltOriginY, testX, testY);
     rbSlope.Setup(rbOriginX, rbOriginY, testX, testY);
+    std::cout << rbSlope.Width() << "x" << rbSlope.Height() << "\n";
 
     i32 ltStartY = ltOriginY;
     i32 ltEndY = testY;
@@ -161,8 +162,8 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
         }
 
         // Restrict to visible area
-        if (endY > 191) {
-            endY = 191;
+        if (endY > 192) {
+            endY = 192;
         }
     };
     adjustY(ltStartY, ltEndY);
@@ -216,7 +217,7 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
                         std::cout << "\n";
                         // clang-format on
                     } else {
-                        /*
+
                         // TODO: remove this branch
                         // clang-format off
                         std::cout << std::setw(3) << std::right << testX << "x" << std::setw(3) << std::left << testY;
@@ -228,19 +229,18 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
                             std::cout << "  AA step = " << slope.AAStep() << "  bias = " << slope.AABias();
                         std::cout << "\n";
                         // clang-format on
-                        */
                     }
                 }
             }
         };
 
-        if (y >= ltStartY && y < ltEndY) {
+        /*if (y >= ltStartY && y < ltEndY) {
             calcSlope(ltSlope, "LT");
-        }
-        // TODO: reenable this
-        /*if (y >= rbStartY && y < rbEndY) {
-            calcSlope(rbSlope, "RB");
         }*/
+        // TODO: reenable this
+        if (y >= rbStartY && y < rbEndY) {
+            calcSlope(rbSlope, "RB");
+        }
     }
 }
 
@@ -255,13 +255,14 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All X-major slopes for TOP test, except Y=0
-    for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
+    /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
         for (i32 x = y + 1; x <= data.maxX; x++) {
             testSlope(data, x, y, mismatch);
         }
-    }
+    }*/
     // testSlope(data, 3, 2, mismatch);
     // testSlope(data, 222, 3, mismatch);
+    testSlope(data, 256 - 15, 192 - 6, mismatch);
 
     // Selected cases where LT breaks
     // testSlope(data, 54, 2, mismatch); // -1
@@ -349,7 +350,7 @@ void test(Data &data) {
     }
 }
 
-int main() {
+int mainX() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
@@ -358,19 +359,19 @@ int main() {
     // auto dataBL = readFile("data/BL.bin");
     // auto dataBR = readFile("data/BR.bin");
 
-    auto dataT = readFile("C:/temp/T.bin");
+    // auto dataT = readFile("C:/temp/T.bin");
     // auto dataB = readFile("C:/temp/B.bin");
     // auto dataL = readFile("C:/temp/L.bin");
-    // auto dataR = readFile("C:/temp/R.bin");
+    auto dataR = readFile("C:/temp/R.bin");
 
-    if (dataT)
-        test(*dataT);
+    // if (dataT)
+    //    test(*dataT);
     // if (dataB)
     //    test(*dataB);
     // if (dataL)
     //    test(*dataL);
-    // if (dataR)
-    //    test(*dataR);
+    if (dataR)
+        test(*dataR);
 
     // if (dataT) writeImages(*dataT, "C:/temp/T");
     // if (dataB) writeImages(*dataB, "C:/temp/B");
@@ -378,4 +379,629 @@ int main() {
     // if (dataR) writeImages(*dataR, "C:/temp/R");
 
     return 0;
+}
+
+// --------------------------------------------------------------------------------
+
+int main() {
+    // auto dataT = readFile("C:/temp/T.bin");
+    // auto dataB = readFile("C:/temp/B.bin");
+    auto dataL = readFile("C:/temp/L.bin");
+    auto dataR = readFile("C:/temp/R.bin");
+
+    struct Output {
+        Output(std::filesystem::path path)
+            : stream{path, std::ios::binary} {}
+
+        ~Output() {
+            WriteTerminator();
+        }
+
+        std::ofstream stream;
+
+        i32 lastWidth = -1;
+        i32 lastHeight = -1;
+
+        void Size(i32 width, i32 height) {
+            if (width != lastWidth || height != lastHeight) {
+                if (lastWidth != -1 && lastHeight != -1) {
+                    WriteTerminator();
+                }
+                stream.write((const char *)&width, sizeof(u16));
+                stream.write((const char *)&height, sizeof(u16));
+                lastWidth = width;
+                lastHeight = height;
+            }
+        }
+
+    private:
+        void WriteTerminator() {
+            u32 terminator = 0xFFFFFFFF;
+            stream.write((const char *)&terminator, sizeof(terminator));
+        }
+    };
+
+    Output outLPX{"C:/temp/LPX.bin"};
+    Output outLPY{"C:/temp/LPY.bin"};
+    Output outLNX{"C:/temp/LNX.bin"};
+    Output outLNY{"C:/temp/LNY.bin"};
+    Output outRPX{"C:/temp/RPX.bin"};
+    Output outRPY{"C:/temp/RPY.bin"};
+    Output outRNX{"C:/temp/RNX.bin"};
+    Output outRNY{"C:/temp/RNY.bin"};
+
+    i32 minY = std::max(dataL->minY, dataR->minY);
+    i32 maxY = std::min(dataL->maxY, dataR->maxY);
+    i32 minX = std::max(dataL->minX, dataR->minX);
+    i32 maxX = std::min(dataL->maxX, dataR->maxX);
+
+    for (i32 y = minY; y <= maxY; y++) {
+        for (i32 x = minX; x <= maxX; x++) {
+            // Create and configure the slopes
+            struct SlopeCoords {
+                i32 startX, endX;
+                i32 startY, endY;
+            };
+
+            SlopeCoords lltCoords{0, x, 0, y};
+            SlopeCoords lrbCoords{0, x, 192, y};
+            SlopeCoords rltCoords{256, x, 0, y};
+            SlopeCoords rrbCoords{256, x, 192, y};
+
+            auto adjustY = [&](SlopeCoords &coords) {
+                if (coords.startY > coords.endY) {
+                    // Scan from top to bottom
+                    std::swap(coords.startX, coords.endX);
+                    std::swap(coords.startY, coords.endY);
+                }
+            };
+            adjustY(lltCoords);
+            adjustY(lrbCoords);
+            adjustY(rltCoords);
+            adjustY(rrbCoords);
+
+            Slope lltSlope{}; // left LT
+            Slope lrbSlope{}; // left RB
+            Slope rltSlope{}; // right LT
+            Slope rrbSlope{}; // right RB
+            lltSlope.Setup(lltCoords.startX, lltCoords.startY, lltCoords.endX, lltCoords.endY);
+            lrbSlope.Setup(lrbCoords.startX, lrbCoords.startY, lrbCoords.endX, lrbCoords.endY);
+            rltSlope.Setup(rltCoords.startX, rltCoords.startY, rltCoords.endX, rltCoords.endY);
+            rrbSlope.Setup(rrbCoords.startX, rrbCoords.startY, rrbCoords.endX, rrbCoords.endY);
+
+            auto calcSlope = [&](i32 xOffset, i32 startY, i32 yy, const Data &data, const Slope &slope, Output &out) {
+                // Skip diagonals and perfect horizontals/verticals
+                if (slope.Width() == 0 || slope.Height() == 0 || slope.Width() == slope.Height()) {
+                    return;
+                }
+
+                // Determine horizontal span
+                i32 startX = slope.XStart(yy);
+                i32 endX = slope.XEnd(yy);
+                if (slope.IsNegative()) {
+                    std::swap(startX, endX);
+                }
+
+                // Write slope values from hardware capture using the generated slope
+                // Data format:
+                //   [u16] width
+                //   [u16] height
+                //   repeated:
+                //     [u16] x
+                //     [u8] y
+                //     [u8] expected output
+                //     (if all of these are FFs, end of list)
+                const i32 w = slope.Width();
+                const i32 h = slope.Height();
+                out.Size(w, h);
+                auto &spans = data.lines[y][x].spans;
+                for (i32 xx = startX; xx <= endX; xx++) {
+                    if (spans.contains(yy)) {
+                        auto &span = spans.at(yy);
+                        // Contents:
+                        // - input: width,height; x,y coordinates
+                        // - output: expected coverage value at x,y (including zeros)
+                        i32 oxx = xx - xOffset;
+                        i32 oyy = yy - startY;
+                        out.stream.write((const char *)&oxx, sizeof(u16));
+                        out.stream.write((const char *)&oyy, sizeof(u8));
+                        out.stream.write((const char *)&span[xx], sizeof(u8));
+                    }
+                }
+            };
+
+            // Generate slopes and write coverage values to the corresponding data set
+            const i32 lStartY = std::max(lltCoords.startY, rltCoords.startY);
+            const i32 lEndY = std::min(lltCoords.endY, rltCoords.endY);
+            for (i32 yy = lStartY; yy < lEndY; yy++) {
+                calcSlope(std::min(lltCoords.startX, lltCoords.endX), lStartY, yy, *dataL, lltSlope,
+                          lltSlope.IsXMajor() ? outRPX : outRPY);
+                calcSlope(std::min(rltCoords.startX, rltCoords.endX), lStartY, yy, *dataR, rltSlope,
+                          rltSlope.IsXMajor() ? outLNX : outLNY);
+            }
+            const i32 rStartY = std::max(lrbCoords.startY, rrbCoords.startY);
+            const i32 rEndY = std::min(lrbCoords.endY, rrbCoords.endY);
+            for (i32 yy = rStartY; yy < rEndY; yy++) {
+                calcSlope(std::min(lrbCoords.startX, lrbCoords.endX), rStartY, yy, *dataL, lrbSlope,
+                          lrbSlope.IsXMajor() ? outRNX : outRNY);
+                calcSlope(std::min(rrbCoords.startX, rrbCoords.endX), rStartY, yy, *dataR, rrbSlope,
+                          rrbSlope.IsXMajor() ? outLPX : outLPY);
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+// --------------------------------------------------------------------------------
+
+#include <map>
+#include <random>
+#include <vector>
+
+enum class Operator {
+    FracXStart,
+    FracXEnd,
+    XStart,
+    XEnd,
+    XWidth,
+    ExpandAABits,
+    MulWidth,
+    MulHeight,
+    DivWidth,
+    DivHeight,
+    Div2,
+    MulHeightDivWidthAA,
+    PushX,
+    PushY,
+    PushWidth,
+    PushHeight,
+
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
+    Negate,
+    LeftShift,
+    ArithmeticRightShift,
+    LogicRightShift,
+    And,
+    Or,
+    Xor,
+    Not,
+    Dup,
+    Swap,
+};
+
+struct Variables {
+    i32 x, y;
+    i32 width, height;
+};
+
+struct Context {
+    Variables vars;
+
+private:
+    std::vector<i32> stack;
+
+    friend struct Operation;
+    friend struct Evaluator;
+};
+
+struct Operation {
+    enum class Type { Operator, Constant };
+
+    Type type;
+    union {
+        Operator op;
+        i32 constVal;
+        i32 varId;
+    };
+
+    std::string Str() {
+        switch (type) {
+        case Type::Operator:
+            switch (op) {
+            case Operator::FracXStart: return "push_frac_x_start";
+            case Operator::FracXEnd: return "push_frac_x_end";
+            case Operator::XStart: return "push_x_start";
+            case Operator::XEnd: return "push_x_end";
+            case Operator::XWidth: return "push_x_width";
+            case Operator::ExpandAABits: return "expand_aa_bits";
+            case Operator::MulWidth: return "mul_width";
+            case Operator::MulHeight: return "mul_height";
+            case Operator::DivWidth: return "div_width";
+            case Operator::DivHeight: return "div_height";
+            case Operator::Div2: return "div_2";
+            case Operator::MulHeightDivWidthAA: return "mul_height_div_width_aa";
+            case Operator::PushX: return "push_x";
+            case Operator::PushY: return "push_y";
+            case Operator::PushWidth: return "push_width";
+            case Operator::PushHeight: return "push_height";
+
+            case Operator::Add: return "add";
+            case Operator::Subtract: return "sub";
+            case Operator::Multiply: return "mul";
+            case Operator::Divide: return "div";
+            case Operator::Modulo: return "mod";
+            case Operator::Negate: return "neg";
+            case Operator::LeftShift: return "shl";
+            case Operator::ArithmeticRightShift: return "sar";
+            case Operator::LogicRightShift: return "shr";
+            case Operator::And: return "and";
+            case Operator::Or: return "or";
+            case Operator::Xor: return "xor";
+            case Operator::Not: return "not";
+            case Operator::Dup: return "dup";
+            case Operator::Swap: return "swap";
+            }
+            return "(invalid op)";
+        case Type::Constant:
+            return std::string("push_const ") + std::to_string(constVal);
+            // return std::format("push_const {}", constVal);
+        default: return "(invalid type)";
+        }
+    }
+
+    [[gnu::flatten]] bool Execute(Context &ctx) {
+        switch (type) {
+        case Type::Operator: return ExecuteOperator(ctx);
+        case Type::Constant: return ExecuteConstant(ctx);
+        }
+        return false;
+    }
+
+private:
+    bool ExecuteOperator(Context &ctx) {
+        auto &stack = ctx.stack;
+        auto binaryFunc = [&](auto &&func) -> bool {
+            if (stack.size() < 2) {
+                return false;
+            }
+            const i32 y = stack.back();
+            stack.pop_back();
+            const i32 x = stack.back();
+            stack.pop_back();
+            const i32 result = func(x, y);
+            stack.push_back(result);
+            return true;
+        };
+
+        auto unaryFunc = [&](auto &&func) -> bool {
+            if (stack.size() < 1) {
+                return false;
+            }
+            const i32 x = stack.back();
+            stack.pop_back();
+            const i32 result = func(x);
+            stack.push_back(result);
+            return true;
+        };
+
+        switch (op) {
+        case Operator::FracXStart: {
+            i32 divResult = (Slope::kOne / ctx.vars.height);
+            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+            stack.push_back(Slope::kBias + dx);
+            return true;
+        }
+        case Operator::FracXEnd: {
+            i32 divResult = (Slope::kOne / ctx.vars.height);
+            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+            i32 fracStart = Slope::kBias + dx;
+            return (fracStart & Slope::kMask) + dx - Slope::kOne;
+        }
+
+        case Operator::XStart: {
+            i32 divResult = (Slope::kOne / ctx.vars.height);
+            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+            stack.push_back((Slope::kBias + dx) >> Slope::kFracBits);
+            return true;
+        }
+        case Operator::XEnd: {
+            i32 divResult = (Slope::kOne / ctx.vars.height);
+            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+            i32 fracStart = Slope::kBias + dx;
+            return ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
+        }
+
+        case Operator::XWidth: {
+            i32 divResult = (Slope::kOne / ctx.vars.height);
+            i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+            i32 fracStart = Slope::kBias + dx;
+            i32 xStart = fracStart >> Slope::kFracBits;
+            i32 xEnd = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
+            return xEnd - xStart + 1;
+        }
+        case Operator::ExpandAABits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBitsX; });
+        case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
+        case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
+        case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / ctx.vars.width; });
+        case Operator::DivHeight: return unaryFunc([&](i32 x) { return x / ctx.vars.height; });
+        case Operator::Div2: return unaryFunc([&](i32 x) { return x >> 1; });
+        case Operator::MulHeightDivWidthAA:
+            return unaryFunc(
+                [&](i32 x) { return ((x * ctx.vars.height * 32) << Slope::kAAFracBitsX) / ctx.vars.width; });
+        case Operator::PushX: ctx.stack.push_back(ctx.vars.x); return true;
+        case Operator::PushY: ctx.stack.push_back(ctx.vars.y); return true;
+        case Operator::PushWidth: ctx.stack.push_back(ctx.vars.width); return true;
+        case Operator::PushHeight: ctx.stack.push_back(ctx.vars.height); return true;
+
+        case Operator::Add: return binaryFunc([](i32 x, i32 y) { return x + y; });
+        case Operator::Subtract: return binaryFunc([](i32 x, i32 y) { return x - y; });
+        case Operator::Multiply: return binaryFunc([](i32 x, i32 y) { return x * y; });
+        case Operator::Divide:
+            return binaryFunc([](i32 x, i32 y) { return y == 0 || (x == 0x80000000 && y == -1) ? INT32_MAX : x / y; });
+        case Operator::Modulo:
+            return binaryFunc([](i32 x, i32 y) { return y == 0 || (x == 0x80000000 && y == -1) ? 0 : x % y; });
+        case Operator::Negate: return unaryFunc([](i32 x) { return -x; });
+        case Operator::LeftShift: return binaryFunc([](i32 x, i32 y) { return x << y; });
+        case Operator::ArithmeticRightShift: return binaryFunc([](i32 x, i32 y) { return x >> y; });
+        case Operator::LogicRightShift: return binaryFunc([](i32 x, i32 y) { return (u32)x >> (u32)y; });
+        case Operator::And: return binaryFunc([](i32 x, i32 y) { return x & y; });
+        case Operator::Or: return binaryFunc([](i32 x, i32 y) { return x | y; });
+        case Operator::Xor: return binaryFunc([](i32 x, i32 y) { return x ^ y; });
+        case Operator::Not: return unaryFunc([](i32 x) { return ~x; });
+        case Operator::Dup:
+            if (stack.empty()) {
+                return false;
+            } else {
+                stack.push_back(stack.back());
+                return true;
+            }
+        case Operator::Swap:
+            if (stack.size() < 2) {
+                return false;
+            } else {
+                std::swap(stack[stack.size() - 1], stack[stack.size() - 2]);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool ExecuteConstant(Context &ctx) {
+        ctx.stack.push_back(constVal);
+        return true;
+    }
+};
+
+struct Evaluator {
+    Context ctx;
+    std::vector<Operation> ops;
+
+    void DebugPrint(std::ostream &os) {
+        os << "Variables:\n";
+        os << "  x=" << ctx.vars.x << "\n";
+        os << "  y=" << ctx.vars.y << "\n";
+        os << "  w=" << ctx.vars.width << "\n";
+        os << "  h=" << ctx.vars.height << "\n";
+
+        os << "Operations:\n";
+        for (auto &op : ops) {
+            os << "  " << op.Str() << "\n";
+        }
+    }
+
+    bool Eval(i32 &result) {
+        ctx.stack.clear();
+        for (auto &op : ops) {
+            if (!op.Execute(ctx)) {
+                return false;
+            }
+        }
+        if (ctx.stack.size() != 1) {
+            return false;
+        }
+        const i32 divResult = (Slope::kOne / ctx.vars.height);
+        const i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+        const i32 fracStart = Slope::kBias + dx;
+        const i32 startX = fracStart >> Slope::kFracBits;
+        const i32 endX = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
+        const i32 deltaX = endX - startX + 1;
+        const i32 baseCoverage = ctx.stack.back();
+        const i32 fullCoverage = ((deltaX * ctx.vars.height * Slope::kAARange) << Slope::kAAFracBitsX) / ctx.vars.width;
+        const i32 coverageStep = fullCoverage / deltaX;
+        const i32 coverageBias = coverageStep / 2;
+        const i32 offset = ctx.vars.x - startX;
+        const i32 fracCoverage = baseCoverage + offset * coverageStep;
+        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABaseX;
+        result = finalCoverage >> Slope::kAAFracBitsX;
+
+        // result = ctx.stack.back();
+
+        return true;
+    }
+};
+
+struct DataPoint {
+    i32 x, y;
+    i32 width, height;
+    i32 expectedOutput;
+
+    void ApplyVars(Variables &vars) {
+        vars.x = x;
+        vars.y = y;
+        vars.width = width;
+        vars.height = height;
+    }
+};
+
+int main3() {
+    std::vector<DataPoint> dataPoints;
+    // dataPoints.push_back(DataPoint{.x = 36, .y = 1, .width = 54, .height = 2, .expectedOutput = 11});
+    // dataPoints.push_back(DataPoint{.x = 2, .y = 1, .width = 15, .height = 6, .expectedOutput = 0});
+    // dataPoints.push_back(DataPoint{.x = 7, .y = 3, .width = 15, .height = 6, .expectedOutput = 0});
+    // dataPoints.push_back(DataPoint{.x = 9, .y = 0, .width = 54, .height = 2, .expectedOutput = 10});
+    // dataPoints.push_back(DataPoint{.x = 12, .y = 5, .width = 15, .height = 6, .expectedOutput = 0});
+    // dataPoints.push_back(DataPoint{.x = 44, .y = 3, .width = 56, .height = 5, .expectedOutput = 31});
+    // dataPoints.push_back(DataPoint{.x = 45, .y = 4, .width = 56, .height = 5, .expectedOutput = 2});
+    dataPoints.push_back(DataPoint{.x = 106, .y = 106, .width = 186, .height = 185, .expectedOutput = 2});
+    dataPoints.push_back(DataPoint{.x = 107, .y = 106, .width = 186, .height = 185, .expectedOutput = 31});
+
+    dataPoints.push_back(DataPoint{.x = 0, .y = 0, .width = 15, .height = 6, .expectedOutput = 6});
+    dataPoints.push_back(DataPoint{.x = 1, .y = 0, .width = 15, .height = 6, .expectedOutput = 19});
+    dataPoints.push_back(DataPoint{.x = 35, .y = 1, .width = 54, .height = 2, .expectedOutput = 9});
+    dataPoints.push_back(DataPoint{.x = 3, .y = 1, .width = 15, .height = 6, .expectedOutput = 12});
+    dataPoints.push_back(DataPoint{.x = 105, .y = 105, .width = 186, .height = 185, .expectedOutput = 29});
+    dataPoints.push_back(DataPoint{.x = 37, .y = 1, .width = 54, .height = 2, .expectedOutput = 12});
+    dataPoints.push_back(DataPoint{.x = 4, .y = 1, .width = 15, .height = 6, .expectedOutput = 25});
+    dataPoints.push_back(DataPoint{.x = 43, .y = 3, .width = 56, .height = 5, .expectedOutput = 28});
+    dataPoints.push_back(DataPoint{.x = 6, .y = 2, .width = 15, .height = 6, .expectedOutput = 19});
+    dataPoints.push_back(DataPoint{.x = 10, .y = 4, .width = 15, .height = 6, .expectedOutput = 6});
+    dataPoints.push_back(DataPoint{.x = 108, .y = 107, .width = 186, .height = 185, .expectedOutput = 29});
+    dataPoints.push_back(DataPoint{.x = 8, .y = 0, .width = 54, .height = 2, .expectedOutput = 9});
+    dataPoints.push_back(DataPoint{.x = 46, .y = 4, .width = 56, .height = 5, .expectedOutput = 4});
+    dataPoints.push_back(DataPoint{.x = 92, .y = 92, .width = 186, .height = 185, .expectedOutput = 0});
+    dataPoints.push_back(DataPoint{.x = 93, .y = 93, .width = 186, .height = 185, .expectedOutput = 31});
+
+    dataPoints.push_back(DataPoint{.x = 5, .y = 2, .width = 15, .height = 6, .expectedOutput = 6});
+    dataPoints.push_back(DataPoint{.x = 8, .y = 3, .width = 15, .height = 6, .expectedOutput = 12});
+    dataPoints.push_back(DataPoint{.x = 9, .y = 3, .width = 15, .height = 6, .expectedOutput = 25});
+    dataPoints.push_back(DataPoint{.x = 11, .y = 4, .width = 15, .height = 6, .expectedOutput = 19});
+    dataPoints.push_back(DataPoint{.x = 13, .y = 5, .width = 15, .height = 6, .expectedOutput = 12});
+    dataPoints.push_back(DataPoint{.x = 14, .y = 5, .width = 15, .height = 6, .expectedOutput = 25});
+    dataPoints.push_back(DataPoint{.x = 10, .y = 0, .width = 54, .height = 2, .expectedOutput = 12});
+
+    Evaluator eval;
+
+    constexpr i32 kConstants[] = {
+        // 1,
+        // Slope::kAARange, Slope::kAAFracBitsX, Slope::kAABaseX,
+        // Slope::kFracBits, Slope::kFracBits >> 1,
+        // Slope::kOne, Slope::kBias,
+    };
+    std::vector<Operation> templateOps;
+    {
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushX});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushY});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushHeight});
+        for (i32 c : kConstants) {
+            templateOps.push_back(Operation{.type = Operation::Type::Constant, .constVal = c});
+        }
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXStart});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXEnd});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XStart});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XEnd});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ExpandAABits});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivHeight});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Div2});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Add});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Subtract});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Multiply});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Divide});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Modulo});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Not});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Dup});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Swap});
+    }
+
+    std::vector<size_t> templateIndices;
+
+    auto nextTemplate = [&] {
+        if (templateIndices.empty()) {
+            templateIndices.push_back(0);
+            eval.ops.push_back(templateOps[0]);
+        } else {
+            size_t index = 0;
+            for (;;) {
+                templateIndices[index]++;
+                if (templateIndices[index] == templateOps.size()) {
+                    templateIndices[index] = 0;
+                    index++;
+                    if (index == templateIndices.size()) {
+                        templateIndices.push_back(0);
+                        eval.ops.push_back(templateOps[0]);
+                        std::cout << templateIndices.size() << "\n";
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            for (size_t i = 0; i <= index; i++) {
+                eval.ops[i] = templateOps[templateIndices[i]];
+            }
+        }
+    };
+
+    /*std::default_random_engine gen;
+    std::uniform_int_distribution<int> distSize(8, 12);
+    std::uniform_int_distribution<int> distOp(0, templateOps.size() - 1);
+    auto randomTemplate = [&] {
+        eval.ops.resize(distSize(gen));
+        for (size_t i = 0; i < eval.ops.size(); i++) {
+            eval.ops[i] = templateOps[distOp(gen)];
+        }
+    };*/
+
+    auto t1 = std::chrono::steady_clock::now();
+    std::vector<Operation> resultOps;
+    for (;;) {
+        nextTemplate();
+        // randomTemplate();
+
+        bool valid = true;
+        for (auto &dataPoint : dataPoints) {
+            dataPoint.ApplyVars(eval.ctx.vars);
+            if (i32 result; eval.Eval(result)) {
+                // result = (result >> Slope::kAAFracBitsX) % Slope::kAARange;
+                // result = result % Slope::kAARange;
+                if (result != dataPoint.expectedOutput) {
+                    valid = false;
+                    break;
+                }
+            } else {
+                valid = false;
+                break;
+            }
+        }
+        if (valid) {
+            std::cout << "Found!\n";
+            resultOps = eval.ops;
+            break;
+        }
+    }
+    auto t2 = std::chrono::steady_clock::now();
+    auto dt = t2 - t1;
+    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(dt) << "\n";
+
+    if (!resultOps.empty()) {
+        std::cout << "Operations:\n";
+        for (auto &op : resultOps) {
+            std::cout << "  " << op.Str() << "\n";
+        }
+        eval.ops = resultOps;
+        std::cout << "Actual results:\n";
+        for (auto &dataPoint : dataPoints) {
+            dataPoint.ApplyVars(eval.ctx.vars);
+            if (i32 result; eval.Eval(result)) {
+                // result = (result >> Slope::kAAFracBitsX) % Slope::kAARange;
+                // result = result % Slope::kAARange;
+                std::cout << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x" << dataPoint.y
+                          << "  " << result << (result == dataPoint.expectedOutput ? " == " : " != ")
+                          << dataPoint.expectedOutput << "\n";
+            }
+        }
+    } else {
+        std::cout << "Could not find sequence of operations that matches the given data points\n";
+    }
+
+    return EXIT_SUCCESS;
 }
