@@ -270,6 +270,22 @@ struct Evaluator {
         if (ctx.stack.size() != 1) {
             return false;
         }
+
+        result = ctx.stack.back();
+
+        return true;
+    }
+
+    bool EvalXMajor(i32 &result) {
+        ctx.stack.clear();
+        for (auto &op : ops) {
+            if (!op.Execute(ctx)) {
+                return false;
+            }
+        }
+        if (ctx.stack.size() != 1) {
+            return false;
+        }
         const i32 divResult = (Slope::kOne / ctx.vars.height);
         const i32 dx = ctx.vars.y * divResult * ctx.vars.width;
         const i32 fracStart = Slope::kBias + dx;
@@ -284,8 +300,6 @@ struct Evaluator {
         const i32 fracCoverage = baseCoverage + offset * coverageStep;
         const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABaseX;
         result = finalCoverage >> Slope::kAAFracBitsX;
-
-        // result = ctx.stack.back();
 
         return true;
     }
