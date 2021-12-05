@@ -41,9 +41,11 @@ enum class Operator {
     Or,
     Xor,
     Not,
+
     Dup,
     Swap,
     Drop,
+    Rot,
 };
 
 struct Variables {
@@ -60,10 +62,9 @@ struct Variables {
 
 struct Context {
     Variables vars;
-
-private:
     std::vector<i32> stack;
 
+private:
     friend struct Operation;
     friend struct Evaluator;
 };
@@ -77,7 +78,7 @@ struct Operation {
         i32 constVal;
     };
 
-    std::string Str() {
+    std::string Str() const {
         switch (type) {
         case Type::Operator:
             switch (op) {
@@ -115,6 +116,7 @@ struct Operation {
             case Operator::Dup: return "dup";
             case Operator::Swap: return "swap";
             case Operator::Drop: return "drop";
+            case Operator::Rot: return "rot";
             }
             return "(invalid op)";
         case Type::Constant:
@@ -253,6 +255,21 @@ private:
                 stack.pop_back();
                 return true;
             }
+        case Operator::Rot:
+            if (stack.size() < 1) {
+                return false;
+            } else {
+                i32 count = stack.back();
+                if (count < 1) {
+                    return false;
+                }
+                if (stack.size() < count + 1) {
+                    return false;
+                }
+                stack.pop_back();
+                std::rotate(stack.begin(), stack.begin() + count - 1, stack.begin() + count);
+                return true;
+            }
         }
         return false;
     }
@@ -278,6 +295,51 @@ struct Evaluator {
         for (auto &op : ops) {
             os << "  " << op.Str() << "\n";
         }
+    }
+
+    void BeginEval(const DataPoint &dataPoint) {
+        ctx.stack.clear();
+        ctx.vars.Apply(dataPoint);
+    }
+
+    bool EvalOp(size_t index) {
+        if (index >= ops.size()) {
+            return false;
+        }
+        auto &op = ops[index];
+        if (!op.Execute(ctx)) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Result(i32 &result) const {
+        if (ctx.stack.empty()) {
+            return false;
+        }
+        result = ctx.stack.back();
+        return true;
+    }
+
+    bool ResultXMajor(i32 &result) const {
+        if (ctx.stack.empty()) {
+            return false;
+        }
+        const i32 divResult = (Slope::kOne / ctx.vars.height);
+        const i32 dx = ctx.vars.y * divResult * ctx.vars.width;
+        const i32 fracStart = Slope::kBias + dx;
+        const i32 startX = fracStart >> Slope::kFracBits;
+        const i32 endX = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
+        const i32 deltaX = endX - startX + 1;
+        const i32 baseCoverage = ctx.stack.back();
+        const i32 fullCoverage = ((deltaX * ctx.vars.height * Slope::kAARange) << Slope::kAAFracBitsX) / ctx.vars.width;
+        const i32 coverageStep = fullCoverage / deltaX;
+        const i32 coverageBias = coverageStep / 2;
+        const i32 offset = ctx.vars.x - startX;
+        const i32 fracCoverage = baseCoverage + offset * coverageStep;
+        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABaseX;
+        result = finalCoverage >> Slope::kAAFracBitsX;
+        return true;
     }
 
     bool Eval(const DataPoint &dataPoint, i32 &result) {
@@ -313,11 +375,9 @@ struct Evaluator {
 
 private:
     bool EvalCommon(const DataPoint &dataPoint) {
-        ctx.stack.clear();
-        ctx.vars.Apply(dataPoint);
+        BeginEval(dataPoint);
         for (auto &op : ops) {
             if (!op.Execute(ctx)) {
-                std::cout << op.Str() << " failed\n";
                 return false;
             }
         }

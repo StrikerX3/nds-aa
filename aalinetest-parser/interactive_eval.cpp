@@ -91,10 +91,6 @@ public:
         return m_eval.ops;
     }
 
-private:
-    DataSet m_dataset;
-    Evaluator m_eval;
-
     const std::vector<DataPoint> &GetDataSet(Group group) const {
         switch (group) {
         case Group::LPX: return m_dataset.lpx;
@@ -108,6 +104,82 @@ private:
         default: return m_dataset.lpx; // TODO: invalid/unreachable
         }
     }
+
+    // --- Step evaluation -------------------------------------------------------------------------
+
+    bool BeginStepEval(Group group, i32 width, i32 height, i32 x, i32 y) {
+        for (auto &dataPoint : GetDataSet(group)) {
+            if (dataPoint.x == x && dataPoint.y == y && dataPoint.width == width && dataPoint.height == height) {
+                m_stepEvalActive = true;
+                m_stepEvalIndex = 0;
+                m_stepEvalGroup = group;
+                m_stepEvalDataPoint = dataPoint;
+                m_stepEval.ops = m_eval.ops;
+                m_stepEval.BeginEval(dataPoint);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void StepEvalReset() {
+        if (m_stepEvalActive) {
+            m_stepEvalIndex = 0;
+            m_stepEval.ops = m_eval.ops;
+            m_stepEval.BeginEval(m_stepEvalDataPoint);
+        }
+    }
+
+    void StepEvalCancel() {
+        m_stepEvalActive = false;
+    }
+
+    bool StepEval() {
+        if (m_stepEval.EvalOp(m_stepEvalIndex)) {
+            m_stepEvalIndex++;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool IsStepping() const {
+        return m_stepEvalActive;
+    }
+
+    size_t StepEvalIndex() const {
+        return m_stepEvalIndex;
+    }
+
+    Group StepEvalGroup() const {
+        return m_stepEvalGroup;
+    }
+
+    DataPoint StepEvalDataPoint() const {
+        return m_stepEvalDataPoint;
+    }
+
+    const std::vector<i32> &StepEvalStack() const {
+        return m_stepEval.ctx.stack;
+    }
+
+    const std::vector<Operation> &StepEvalOperations() const {
+        return m_stepEval.ops;
+    }
+
+    bool StepEvalResult(i32 &result) const {
+        return m_stepEval.Result(result);
+    }
+
+private:
+    DataSet m_dataset;
+    Evaluator m_eval;
+
+    bool m_stepEvalActive = false;
+    size_t m_stepEvalIndex = 0;
+    Group m_stepEvalGroup;
+    DataPoint m_stepEvalDataPoint;
+    Evaluator m_stepEval;
 };
 
 void evaluate(InteractiveEvaluator &eval, Group group) {
@@ -162,7 +234,8 @@ std::map<std::string, Command> commands;
 
 namespace util {
 
-void displayFunc(std::vector<Operation> &ops, std::string marker = "", size_t markerStart = ~0, size_t markerEnd = 0) {
+void displayFunc(const std::vector<Operation> &ops, std::string marker = "", size_t markerStart = ~0,
+                 size_t markerEnd = 0) {
     size_t i = 0;
     std::string spaces(marker.size(), ' ');
     for (auto &op : ops) {
@@ -188,6 +261,118 @@ void help(InteractiveContext &, const std::vector<std::string> &) {
     for (auto &[cmd, desc] : commands) {
         std::cout << cmd << " - " << desc.description << "\n";
     }
+}
+
+void stepEval(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (args.size() < 5) {
+        std::cout << "Missing arguments\n";
+        std::cout << "Usage: eval group width height x y\n";
+        std::cout << "  group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY\n";
+        return;
+    }
+
+    auto parseNum = [&](const std::string &arg, i32 &output) -> bool {
+        try {
+            output = std::stoi(arg);
+            return true;
+        } catch (...) {
+            std::cout << "Not a number: \"" << arg << "\"\n";
+            return false;
+        }
+    };
+
+    if (Group group; GroupFromName(args[0], group)) {
+        i32 width, height, x, y;
+        if (!parseNum(args[1], width) || !parseNum(args[2], height) || !parseNum(args[3], x) || !parseNum(args[4], y)) {
+            return;
+        }
+        if (!ctx.eval.BeginStepEval(group, width, height, x, y)) {
+            std::cout << "No such data point found in group \"" << GroupName(group) << "\": " << width << "x" << height
+                      << " @ " << x << "x" << y << ".\n";
+            return;
+        }
+        std::cout << "Starting evaluation of data point " << width << "x" << height << " @ " << x << "x" << y
+                  << " of group " << GroupName(group) << "\n";
+    } else {
+        std::cout << "Invalid group: \"" << GroupName(group) << "\"\n";
+    }
+}
+
+void stepNext(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (!ctx.eval.IsStepping()) {
+        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        return;
+    }
+    if (ctx.eval.StepEval()) {
+        std::cout << ctx.eval.StepEvalOperations()[ctx.eval.StepEvalIndex() - 1].Str() << " =>";
+        for (auto num : ctx.eval.StepEvalStack()) {
+            std::cout << " " << num;
+        }
+        std::cout << "\n";
+    } else {
+        std::cout << "Reached the end of the function.\n";
+    }
+    if (i32 result; ctx.eval.StepEvalResult(result)) {
+        std::cout << "Result: " << result << "\n";
+    } else {
+        std::cout << "Stack is empty; no result available\n";
+    }
+
+    auto dataPoint = ctx.eval.StepEvalDataPoint();
+    std::cout << "Step-by-step evaluator state:\n";
+    std::cout << "  Evaluating data point " << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x"
+              << dataPoint.y << " of group " << GroupName(ctx.eval.StepEvalGroup()) << "\n";
+    std::cout << "Operations:\n";
+    util::displayFunc(ctx.eval.StepEvalOperations(), "=> ", ctx.eval.StepEvalIndex(), ctx.eval.StepEvalIndex() + 1);
+    std::cout << "Stack:\n";
+    size_t i = 0;
+    for (auto num : ctx.eval.StepEvalStack()) {
+        std::cout << "   " << i << ": " << num << "\n";
+        i++;
+    }
+    if (i32 result; ctx.eval.StepEvalResult(result)) {
+        std::cout << "Current result: " << result << "\n";
+    }
+}
+
+void stepReset(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (!ctx.eval.IsStepping()) {
+        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        return;
+    }
+    ctx.eval.StepEvalReset();
+    std::cout << "Step-by-step evaluation reset.\n";
+}
+
+void stepState(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (!ctx.eval.IsStepping()) {
+        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        return;
+    }
+    auto dataPoint = ctx.eval.StepEvalDataPoint();
+    std::cout << "Step-by-step evaluator state:\n";
+    std::cout << "  Evaluating data point " << dataPoint.width << "x" << dataPoint.height << " @ " << dataPoint.x << "x"
+              << dataPoint.y << " of group " << GroupName(ctx.eval.StepEvalGroup()) << "\n";
+    std::cout << "Operations:\n";
+    util::displayFunc(ctx.eval.StepEvalOperations(), "=> ", ctx.eval.StepEvalIndex(), ctx.eval.StepEvalIndex() + 1);
+    std::cout << "Stack:\n";
+    size_t i = 0;
+    for (auto num : ctx.eval.StepEvalStack()) {
+        std::cout << "   " << i << ": " << num << "\n";
+        i++;
+    }
+    if (i32 result; ctx.eval.StepEvalResult(result)) {
+        std::cout << "Current result: " << result << "\n";
+    }
+}
+
+void stepCancel(InteractiveContext &ctx, const std::vector<std::string> &args) {
+    if (!ctx.eval.IsStepping()) {
+        std::cout << "Not running a step-by-step evaluation. Use the \"eval\" command to start.\n";
+        return;
+    }
+    ctx.eval.StepEvalCancel();
+    std::cout << "Step-by-step evaluation cancelled.\n";
 }
 
 void evalall(InteractiveContext &ctx, const std::vector<std::string> &args) {
@@ -225,9 +410,11 @@ auto opTemplates = [] {
     templates.insert({"or", {.type = Operation::Type::Operator, .op = Operator::Or}});
     templates.insert({"xor", {.type = Operation::Type::Operator, .op = Operator::Xor}});
     templates.insert({"not", {.type = Operation::Type::Operator, .op = Operator::Not}});
+
     templates.insert({"dup", {.type = Operation::Type::Operator, .op = Operator::Dup}});
     templates.insert({"swap", {.type = Operation::Type::Operator, .op = Operator::Swap}});
     templates.insert({"drop", {.type = Operation::Type::Operator, .op = Operator::Drop}});
+    templates.insert({"rot", {.type = Operation::Type::Operator, .op = Operator::Rot}});
 
     templates.insert({"push_frac_x_start", {.type = Operation::Type::Operator, .op = Operator::FracXStart}});
     templates.insert({"push_frac_x_end", {.type = Operation::Type::Operator, .op = Operator::FracXEnd}});
@@ -399,8 +586,19 @@ void initCommands() {
 
     add({"q", "exit", "quit"}, {command::quit, "Quits the interactive evaluator."});
     add({"h", "help"}, {command::help, "Displays this help text."});
+    add({"e", "eval"}, {command::stepEval, "Begins evaluating the current function in step-by-step mode.\n"
+                                           "  Arguments: group width height x y\n"
+                                           "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY.\n"
+                                           "    width, height, x, y: specify a data point from the group"});
+    add({"n", "next"}, {command::stepNext, "Runs the next operation in the current step-by-step evaluation."});
+    add({"r", "reset"},
+        {command::stepReset,
+         "Resets the step-by-step evaluation to the beginning and transfers the current function to it."});
+    add({"s", "state"}, {command::stepState, "Displays the current state of the step-by-step evaluation."});
+    add({"c", "cancel"}, {command::stepCancel, "Cancels the current step-by-step evaluation."});
     add({"evalall"}, {command::evalall, "Evaluates the current function against the entire data set or a subset.\n"
-                                        "Valid groups are LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
+                                        "  Arguments: group\n"
+                                        "    group: one of LPX, LPY, LNX, LNY, RPX, RPY, RNX, RNY."});
     add({"func", "fn"}, {command::func, "Displays the current function."});
     add({"addop"}, {command::addOp, "Adds one or more operations to the function.\n"
                                     "  Arguments: op [op ...] [pos = -1]\n"
@@ -460,6 +658,11 @@ void runInteractiveEvaluator(std::filesystem::path root) {
 
     std::string input;
     while (ctx.running && std::cin) {
+        if (ctx.eval.IsStepping()) {
+            auto dataPoint = ctx.eval.StepEvalDataPoint();
+            std::cout << "[step " << ctx.eval.StepEvalIndex() << "] " << dataPoint.width << "x" << dataPoint.height
+                      << " @ " << dataPoint.x << "x" << dataPoint.y;
+        }
         std::cout << "> ";
         std::getline(std::cin, input);
         auto cmdLine = ParseCommandLine(input);
