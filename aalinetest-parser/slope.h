@@ -393,11 +393,13 @@ public:
             //   - The line has two perfect diagonal segments: 0x0 to 106x106, and 107x106 to 185x184
             //   - The calculation produces a gradient that's too short for the first segment, which causes values to
             //     wrap around to 31 before the segment ends (starting at 93x93)
-            //   - The gradient goes ..., 30, 30, 30, 29, 2, 31, 29, 29, 28, ... at the transition between segments
+            //   - The gradient goes ..., 30, 30, 30, 29, >2, 31<, 29, 29, 28, ... at the transition between segments
             //     (excerpt from 102x102 to 110x109)
             //   - The values 2 and 31 are in the same scanline (106) which contains the transition
-            //   - My theory is that this line happens to be calculated more "accurately" (loosely speaking). The 2 sits
-            //     at the end of the first segment, and the 31 is at the start of the next segment
+            //   - These two values come from the corresponding negative slope at the same exact position within the
+            //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
+            //   - (OLD, INCORRECT) My theory is that this line happens to be calculated more "accurately" (loosely
+            //     speaking). The 2 sits at the end of the first segment, and the 31 is at the start of the next segment
             //   - It might be using the FracXEnd(y) as reference instead of the start for long spans
             //   - Or maybe it always uses FracXEnd(y)?
 

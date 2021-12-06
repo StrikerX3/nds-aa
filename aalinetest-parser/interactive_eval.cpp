@@ -186,7 +186,7 @@ public:
         }
     }
 
-    void StepEvalCancel() {
+    void StepEvalEnd() {
         m_stepEvalActive = false;
     }
 
@@ -583,8 +583,8 @@ void stepEnd(InteractiveContext &ctx, const std::vector<std::string> &args) {
         std::cout << "Not running a step-by-step evaluation. Use the \"stepbegin\" command to start.\n";
         return;
     }
-    ctx.eval.StepEvalCancel();
-    std::cout << "Step-by-step evaluation cancelled.\n";
+    ctx.eval.StepEvalEnd();
+    std::cout << "Step-by-step evaluation ended.\n";
 }
 
 void eval(InteractiveContext &ctx, const std::vector<std::string> &args) {
