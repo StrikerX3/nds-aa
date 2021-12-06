@@ -44,7 +44,7 @@ enum class Operator {
     Dup,    // duplicates the top item
     Swap,   // swaps the two top items
     Drop,   // discards the top item
-    Rot,    // takes N from the stack and moves the top item to the Nth position, shifting items up
+    Rot,    // moves the top item to the Nth position, shifting items up
     RevRot, // takes the Nth from the stack and moves it to the top, shifting items down
 
     // Domain-specific operators

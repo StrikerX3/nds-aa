@@ -732,6 +732,8 @@ void delOp(InteractiveContext &ctx, const std::vector<std::string> &args) {
 
 void clear(InteractiveContext &ctx, const std::vector<std::string> &args) {
     ctx.eval.Operations().clear();
+    ctx.lastLoadedFormulaPath.clear();
+    std::cout << "Formula cleared.\n";
 }
 
 void save(InteractiveContext &ctx, const std::vector<std::string> &args) {
