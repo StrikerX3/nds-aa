@@ -41,10 +41,10 @@ inline std::unique_ptr<Data> readFile(std::filesystem::path path) {
     in.read((char *)&pData->maxY, sizeof(pData->maxY));
 
     switch (pData->type) {
-    case 0: std::cout << "Top left"; break;
-    case 1: std::cout << "Bottom left"; break;
-    case 2: std::cout << "Top right"; break;
-    case 3: std::cout << "Bottom right"; break;
+    case 0: std::cout << "Top"; break;
+    case 1: std::cout << "Bottom"; break;
+    case 2: std::cout << "Left"; break;
+    case 3: std::cout << "Right"; break;
     default: std::cout << "Invalid type (" << (int)pData->type << ")"; return nullptr;
     }
     std::cout << ", " << pData->minX << "x" << (int)pData->minY << " to " << pData->maxX << "x" << (int)pData->maxY;
