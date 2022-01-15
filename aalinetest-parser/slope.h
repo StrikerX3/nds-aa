@@ -63,6 +63,8 @@
 ///   (511 as a raw integer with 9 fractional bits)
 ///
 /// All other operations are otherwise identical.
+///
+/// TODO: describe antialiasing
 /// </remarks>
 class Slope {
     using u32 = uint32_t;
@@ -104,9 +106,9 @@ public:
     static constexpr u32 kAAFracBits = 5;
 
     /// <summary>
-    /// The base antialiasing coverage value.
+    /// The value 1.0 with antialiasing fractional bits.
     /// </summary>
-    static constexpr u32 kAABase = kAARange << kAAFracBits;
+    static constexpr u32 kAAOne = kAARange << kAAFracBits;
 
     /// <summary>
     /// Configures the slope to interpolate the line (X0,X1)-(Y0,Y1) using screen coordinates.
@@ -156,26 +158,6 @@ public:
             m_dx *= kOne / m_height; // This ensures the division is performed before the multiplication
         } else {
             m_dx *= kOne;
-        }
-
-        // Compute antialiasing bias and step per pixel
-        // TODO: not quite correct yet
-        // There might be vertical AA coverage step in addition to horizontal or the step changes depending on whether
-        // it's an x-major or y-major slope
-        if (m_width == 0 || m_height == 0) {
-            // Perfectly horizontal or vertical slopes have full coverage
-            m_aaStep = 0;
-            m_aaBias = kAABase - 1;
-        } else if (m_width == m_height) {
-            // Perfect diagonals have half coverage
-            m_aaStep = 0;
-            m_aaBias = kAABase / 2;
-        } else if (m_xMajor) {
-            m_aaStep = kAABase * m_height / m_width;
-            m_aaBias = m_aaStep / 2;
-        } else {
-            m_aaStep = kAABase * m_width / m_height;
-            m_aaBias = m_aaStep / 2;
         }
     }
 
@@ -281,22 +263,6 @@ public:
     }
 
     /// <summary>
-    /// Retrieves the antialiasing coverage initial bias.
-    /// </summary>
-    /// <returns>The initial value of the antialiasing coverage</returns>
-    constexpr u32 AABias() const {
-        return m_aaBias;
-    }
-
-    /// <summary>
-    /// Retrieves the antialiasign coverage step.
-    /// </summary>
-    /// <returns>The amount to increment the antialiasing coverage value for each pixel</returns>
-    constexpr u32 AAStep() const {
-        return m_aaStep;
-    }
-
-    /// <summary>
     /// Computes the antialiasing coverage at the specified coordinates.
     /// </summary>
     /// <param name="x">The X coordinate</param>
@@ -313,10 +279,6 @@ public:
     /// <param name="y">The Y coordinate</param>
     /// <returns>The antialiasing coverage value at (X,Y)</returns>
     constexpr i32 FracAACoverage(i32 x, i32 y) const {
-        // TODO: right/bottom edges are still off by a lot
-        // TODO: left/top edges are off by a small margin
-        // TODO: Y-major slopes
-
         // Antialiasing notes:
         // - AA coverage calculation uses two different formulas: X-major and non-X-major (includes diagonals)
         // - Perfectly horizontal or vertical edges (DX or DY == 0) are drawn in full alpha
@@ -335,11 +297,6 @@ public:
         //   - Positive gradient: full coverage
         //   - Negative gradient: zero coverage
 
-        // const i32 xOffset =
-        //    (m_negative ? FracXStart(y) - (x << kFracBits) - kBias : (x << kFracBits) + kBias - FracXStart(y)) >>
-        //    kFracBits;
-        // const i32 xOffset = m_negative ? (m_x0 >> kFracBits) - x : x - (m_x0 >> kFracBits);
-        const i32 yOffset = m_negative ? m_y0 - y : y - m_y0;
         if (m_diagonal) {
             // TODO: Perfect diagonals should be computed on the non-Y-major case
             return (kAARange / 2) << kAAFracBits;
@@ -375,16 +332,18 @@ public:
             const i32 coverageBias = coverageStep / 2;
             const i32 offset = x - startX;
             const i32 fracCoverage = offset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) % kAABase;
+            const i32 finalCoverage = (fracCoverage + coverageBias) % kAAOne;
             return finalCoverage;
         } else {
-            // TODO: fix formula
-            const i32 fracCoverage = yOffset * (i32)m_aaStep;
-            const i32 finalCoverage = (fracCoverage + (i32)m_aaBias) % kAABase;
-            const i32 output = m_negative ? std::min(finalCoverage, (i32)kAABase - 1)
-                                          : (i32)kAABase - 1 - std::min(finalCoverage, (i32)kAABase - 1);
-            return output;
+            const i32 fullCoverage = ((m_height * m_width * kAARange) << kAAFracBits) / m_height;
+            const i32 coverageStep = fullCoverage / m_height;
+            const i32 coverageBias = coverageStep / 2;
+            const i32 offset = y - m_y0;
+            const i32 fracCoverage = offset * coverageStep;
+            const i32 finalCoverage = (fracCoverage + coverageBias) % kAAOne;
+            return finalCoverage;
         }
+        // TODO: distinguish between left and right edges in order to invert gradients
     }
 
 private:
@@ -396,6 +355,4 @@ private:
     bool m_negative; // True if the slope is negative (X1 < X0)
     bool m_xMajor;   // True if the slope is X-major (X1-X0 > Y1-Y0)
     bool m_diagonal; // True if the slope is diagonal (X1-X0 == Y1-Y0)
-    u32 m_aaBias;    // Antialiasing coverage initial bias
-    u32 m_aaStep;    // Antialiasing coverage step per pixel
 };

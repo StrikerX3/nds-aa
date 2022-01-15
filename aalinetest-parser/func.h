@@ -413,7 +413,7 @@ struct Evaluator {
         const i32 coverageBias = coverageStep / 2;
         const i32 offset = ctx.vars.x - startX;
         const i32 fracCoverage = baseCoverage + offset * coverageStep;
-        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABase;
+        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAAOne;
         result = finalCoverage >> Slope::kAAFracBits;
         return true;
     }
@@ -444,7 +444,7 @@ struct Evaluator {
         const i32 coverageBias = coverageStep / 2;
         const i32 offset = ctx.vars.x - startX;
         const i32 fracCoverage = baseCoverage + offset * coverageStep;
-        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABase;
+        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAAOne;
         result = finalCoverage >> Slope::kAAFracBits;
         return true;
     }
