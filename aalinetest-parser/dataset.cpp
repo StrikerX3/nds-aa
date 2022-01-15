@@ -114,10 +114,11 @@ void extractDataSet(std::filesystem::path root) {
                 const i32 w = slope.Width();
                 const i32 h = slope.Height();
                 out.Size(w, h);
-                auto &spans = data.lines[y][x].spans;
+                auto &pixels = data.lines[y][x].pixels;
                 for (i32 xx = startX; xx <= endX; xx++) {
-                    if (spans.contains(yy)) {
-                        auto &span = spans.at(yy);
+                    u16 index = (yy << 8) | xx;
+                    if (pixels.contains(index)) {
+                        u8 pixel = pixels.at(index);
                         // Contents:
                         // - input: width,height; x,y coordinates
                         // - output: expected coverage value at x,y (including zeros)
@@ -125,7 +126,7 @@ void extractDataSet(std::filesystem::path root) {
                         i32 oyy = yy - startY;
                         out.stream.write((const char *)&oxx, sizeof(u16));
                         out.stream.write((const char *)&oyy, sizeof(u8));
-                        out.stream.write((const char *)&span[xx], sizeof(u8));
+                        out.stream.write((const char *)&pixel, sizeof(u8));
                     }
                 }
             };

@@ -99,24 +99,14 @@ public:
     static constexpr u32 kAARange = 32;
 
     /// <summary>
-    /// The number of bits reserved for fractional antialiasing coverage calculations for X-major slopes.
+    /// The number of bits reserved for fractional antialiasing coverage calculations.
     /// </summary>
-    static constexpr u32 kAAFracBitsX = 5;
+    static constexpr u32 kAAFracBits = 5;
 
     /// <summary>
-    /// The number of bits reserved for fractional antialiasing coverage calculations for Y-major slopes.
+    /// The base antialiasing coverage value.
     /// </summary>
-    static constexpr u32 kAAFracBitsY = 8;
-
-    /// <summary>
-    /// The base antialiasing coverage value for X-major slopes.
-    /// </summary>
-    static constexpr u32 kAABaseX = kAARange << kAAFracBitsX;
-
-    /// <summary>
-    /// The base antialiasing coverage value for Y-major slopes.
-    /// </summary>
-    static constexpr u32 kAABaseY = kAARange << kAAFracBitsY;
+    static constexpr u32 kAABase = kAARange << kAAFracBits;
 
     /// <summary>
     /// Configures the slope to interpolate the line (X0,X1)-(Y0,Y1) using screen coordinates.
@@ -132,25 +122,24 @@ public:
             std::swap(y0, y1);
         }
 
-        // Store reference coordinates and size
+        // Store reference coordinates
         m_x0 = x0 << kFracBits;
         m_y0 = y0;
-        m_width = x1 - x0;
-        m_height = y1 - y0;
 
         // Determine if this is a negative slope and adjust accordingly
         m_negative = (x1 < x0);
         if (m_negative) {
             m_x0--;
-            m_width = -m_width;
             std::swap(x0, x1);
         }
 
+        // Store size
+        m_width = x1 - x0;
+        m_height = y1 - y0;
+
         // Compute coordinate deltas and determine if the slope is X-major
-        const i32 dx = (x1 - x0);
-        const i32 dy = (y1 - y0);
-        m_xMajor = (dx > dy);
-        m_diagonal = (dx == dy);
+        m_xMajor = (m_width > m_height);
+        m_diagonal = (m_width == m_height);
 
         // Precompute bias for X-major or diagonal slopes
         if (m_xMajor || m_diagonal) {
@@ -162,9 +151,9 @@ public:
         }
 
         // Compute X displacement per scanline
-        m_dx = dx;
-        if (dy != 0) {
-            m_dx *= kOne / dy; // This ensures the division is performed before the multiplication
+        m_dx = m_width;
+        if (m_height != 0) {
+            m_dx *= kOne / m_height; // This ensures the division is performed before the multiplication
         } else {
             m_dx *= kOne;
         }
@@ -173,19 +162,19 @@ public:
         // TODO: not quite correct yet
         // There might be vertical AA coverage step in addition to horizontal or the step changes depending on whether
         // it's an x-major or y-major slope
-        if (dx == 0 || dy == 0) {
+        if (m_width == 0 || m_height == 0) {
             // Perfectly horizontal or vertical slopes have full coverage
             m_aaStep = 0;
-            m_aaBias = (m_xMajor) ? (kAABaseX - 1) : 0 /*(kAABaseY - 1)*/;
-        } else if (dx == dy) {
+            m_aaBias = kAABase - 1;
+        } else if (m_width == m_height) {
             // Perfect diagonals have half coverage
             m_aaStep = 0;
-            m_aaBias = kAABaseX / 2;
+            m_aaBias = kAABase / 2;
         } else if (m_xMajor) {
-            m_aaStep = kAABaseX * dy / dx;
+            m_aaStep = kAABase * m_height / m_width;
             m_aaBias = m_aaStep / 2;
         } else {
-            m_aaStep = kAABaseY * dx / dy;
+            m_aaStep = kAABase * m_width / m_height;
             m_aaBias = m_aaStep / 2;
         }
     }
@@ -314,13 +303,7 @@ public:
     /// <param name="y">The Y coordinate</param>
     /// <returns>The antialiasing coverage value at (X,Y)</returns>
     constexpr i32 AACoverage(i32 x, i32 y) const {
-        if (m_diagonal) {
-            return kAARange / 2;
-        } else if (m_xMajor) {
-            return FracAACoverage(x, y) >> kAAFracBitsX;
-        } else {
-            return FracAACoverage(x, y) >> kAAFracBitsY;
-        }
+        return FracAACoverage(x, y) >> kAAFracBits;
     }
 
     /// <summary>
@@ -335,47 +318,32 @@ public:
         // TODO: Y-major slopes
 
         // Antialiasing notes:
+        // - AA coverage calculation uses two different formulas: X-major and non-X-major (includes diagonals)
         // - Perfectly horizontal or vertical edges (DX or DY == 0) are drawn in full alpha
-        // - Perfectly diagonal edges (DX == DY) are drawn in half alpha
-        // - AA coverage calculation changes depending on the slope's parameters:
-        //   - Left or right edge
-        //   - Positive or negative slope
-        //   - X-major or Y-major slope
-        // - Some edges are drawn with lots of zero or full alpha pixels (more noticeable the closer DX and DY are):
-        //   - Left positive Y-major   (zero alpha)
-        //   - Right negative Y-major  (zero alpha)
-        //   - Left negative Y-major   (full alpha)
-        //   - Right positive Y-major  (full alpha)
-        //   - The pixels seem to be the last pixel of any given vertical span which is the majority of spans in the
-        //     case of near-diagonal edges, but definitely visible on larger spans
-        // - The following edges produce a positive gradient (AA coverage increases as X or Y increases):
+        // - Perfectly diagonal edges (DX == DY) are drawn in half alpha (16)
+        //   - Note that this is actually taken into account by the Y-major formula and is not a special case
+        // - Gradients may be positive or negative
+        //   - Positive gradient: AA coverage increases as X or Y increases
+        //   - Negative gradient: AA coverage decreases as X or Y increases
+        // - The following edges produce a positive gradient:
         //   - Left X-major (both positive and negative)
         //   - Left negative Y-major
         //   - Right positive Y-major
+        // - Negative gradients are calculated by inverting the output of the corresponding positive gradient
+        //   - This can be achieved by XORing the positive gradient output by 31
+        // - The last pixel of every vertical subspan of Y-major edges has fixed coverage depending on the gradient:
+        //   - Positive gradient: full coverage
+        //   - Negative gradient: zero coverage
 
         // const i32 xOffset =
         //    (m_negative ? FracXStart(y) - (x << kFracBits) - kBias : (x << kFracBits) + kBias - FracXStart(y)) >>
         //    kFracBits;
-        const i32 xOffset = m_negative ? (m_x0 >> kFracBits) - x : x - (m_x0 >> kFracBits);
+        // const i32 xOffset = m_negative ? (m_x0 >> kFracBits) - x : x - (m_x0 >> kFracBits);
         const i32 yOffset = m_negative ? m_y0 - y : y - m_y0;
         if (m_diagonal) {
-            // Diagonals are considered not X-major, so use the Y fractional bits
-            return (kAARange / 2) << kAAFracBitsY;
+            // TODO: Perfect diagonals should be computed on the non-Y-major case
+            return (kAARange / 2) << kAAFracBits;
         } else if (m_xMajor) {
-            /*const u32 fracCoverage = xOffset * m_aaStep;
-            const u32 finalCoverage =
-                m_negative ? (fracCoverage - m_aaBias - 1) % kAABaseX : (fracCoverage + m_aaBias) % kAABaseX;
-            return finalCoverage;*/
-
-            /*constexpr u32 kDropBits = 9;
-            const u32 start = (m_negative ? FracXEnd(y) : FracXStart(y)) >> kDropBits;
-            const u32 offset = m_negative ? start - (x << (kFracBits - kDropBits))
-                                          : (x << (kFracBits - kDropBits)) + (kBias >> kDropBits) - start;
-            const u32 fracCoverage = (offset * m_aaStep) >> (kFracBits - kDropBits);
-            const u32 finalCoverage =
-                m_negative ? (fracCoverage - m_aaBias - 1) % kAABaseX : (fracCoverage + m_aaBias) % kAABaseX;
-            return finalCoverage;*/
-
             // TODO: fix the calculation
             // Theory 0: the formula does not use the existing X coordinate; instead, it calculates its own offsets
             // Theory 1: the X-major formula depends on the Y coordinate
@@ -398,69 +366,27 @@ public:
             //   - The values 2 and 31 are in the same scanline (106) which contains the transition
             //   - These two values come from the corresponding negative slope at the same exact position within the
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
-            //   - (OLD, INCORRECT) My theory is that this line happens to be calculated more "accurately" (loosely
-            //     speaking). The 2 sits at the end of the first segment, and the 31 is at the start of the next segment
-            //   - It might be using the FracXEnd(y) as reference instead of the start for long spans
-            //   - Or maybe it always uses FracXEnd(y)?
-
-            // Previous best implementation
-            /*const i32 start = m_negative ? FracXEnd(y) : FracXStart(y);
-            const i32 offset = m_negative ? start - (x << kFracBits) : (x << kFracBits) + kBias - start;
-            const i32 fracCoverage = (offset * (i32)m_aaStep) >> kFracBits;
-            const i32 finalCoverage =
-                m_negative ? (fracCoverage - m_aaBias - 1) % kAABaseX : (fracCoverage + m_aaBias) % kAABaseX;
-            return finalCoverage;*/
-
-            // TODO: brute-force formula
-            // - build full data set from existing data
-            //   - data sets:
-            //     - left positive X-major
-            //     - left positive Y-major
-            //     - left negative X-major
-            //     - left negative Y-major
-            //     - right positive X-major
-            //     - right positive Y-major
-            //     - right negative X-major
-            //     - right negative Y-major
-            //   - contents:
-            //     - input: width,height; x,y coordinates (using slope generator)
-            //     - output: expected coverage value at x,y (including zeros)
-            // - make a function generator
-            //   - supported operations: + - * / % >> << & | ^ ~ -(unary)  (all on i32)
-            //   - variables: all input values above, plus some constants:
-            //     - 1 (useful in many cases)
-            //     - 32 (antialiasing coverage range)
-            //     - 18 (fractional x coordinate bits)
-            //     - 9 (half of fractional x coordinate bits)
-            //     - 5 (fractional antialiasing coverage bits)
-            //   - stack-based
-            //     - variables are pushed onto the stack
-            //     - operators pop one or two values from the stack and push the result
-            //   - stop condition: when a function perfectly matches the input/output set
 
             // TODO: negative slopes
             const i32 startX = XStart(y);
             const i32 endX = XEnd(y);
             const i32 deltaX = endX - startX + 1;
-            const i32 baseCoverage = ((startX * m_height * kAARange) << kAAFracBitsX) / m_width;
-            const i32 fullCoverage = ((deltaX * m_height * kAARange) << kAAFracBitsX) / m_width;
+            const i32 baseCoverage = ((startX * m_height * kAARange) << kAAFracBits) / m_width;
+            const i32 fullCoverage = ((deltaX * m_height * kAARange) << kAAFracBits) / m_width;
             const i32 coverageStep = fullCoverage / deltaX;
             const i32 coverageBias = coverageStep / 2;
             const i32 offset = x - startX;
             // const i32 fracCoverage = baseCoverage + fullCoverage - (deltaX - offset) * coverageStep;
             const i32 fracCoverage = baseCoverage + offset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) % kAABaseX;
+            const i32 finalCoverage = (fracCoverage + coverageBias) % kAABase;
             return finalCoverage;
         } else {
-            const i32 fracCoverage = yOffset * (i32)m_aaStep - xOffset * (i32)kAABaseY;
-            const i32 finalCoverage = m_negative ? (fracCoverage - (i32)m_aaBias - 1) : (fracCoverage + (i32)m_aaBias);
-            const i32 output = m_negative ? std::min(finalCoverage, (i32)kAABaseY - 1)
-                                          : (i32)kAABaseY - 1 - std::min(finalCoverage, (i32)kAABaseY - 1);
-            if (output >= (i32)m_aaBias) {
-                return output;
-            } else {
-                return 0;
-            }
+            // TODO: fix formula
+            const i32 fracCoverage = yOffset * (i32)m_aaStep;
+            const i32 finalCoverage = (fracCoverage + (i32)m_aaBias) % kAABase;
+            const i32 output = m_negative ? std::min(finalCoverage, (i32)kAABase - 1)
+                                          : (i32)kAABase - 1 - std::min(finalCoverage, (i32)kAABase - 1);
+            return output;
         }
     }
 

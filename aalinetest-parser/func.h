@@ -332,7 +332,7 @@ private:
             stack.push_back(ctx.slope.XEnd(ctx.vars.y) - ctx.slope.XStart(ctx.vars.y) + 1);
             return true;
 
-        case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBitsX; });
+        case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBits; });
         case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
         case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
         case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / ctx.vars.width; });
@@ -340,7 +340,7 @@ private:
         case Operator::Div2: return unaryFunc([&](i32 x) { return x >> 1; });
         case Operator::MulHeightDivWidthAA:
             return unaryFunc(
-                [&](i32 x) { return ((x * ctx.vars.height * 32) << Slope::kAAFracBitsX) / ctx.vars.width; });
+                [&](i32 x) { return ((x * ctx.vars.height * 32) << Slope::kAAFracBits) / ctx.vars.width; });
         }
         return false;
     }
@@ -408,13 +408,13 @@ struct Evaluator {
         const i32 endX = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
         const i32 deltaX = endX - startX + 1;
         const i32 baseCoverage = ctx.stack.back();
-        const i32 fullCoverage = ((deltaX * ctx.vars.height * Slope::kAARange) << Slope::kAAFracBitsX) / ctx.vars.width;
+        const i32 fullCoverage = ((deltaX * ctx.vars.height * Slope::kAARange) << Slope::kAAFracBits) / ctx.vars.width;
         const i32 coverageStep = fullCoverage / deltaX;
         const i32 coverageBias = coverageStep / 2;
         const i32 offset = ctx.vars.x - startX;
         const i32 fracCoverage = baseCoverage + offset * coverageStep;
-        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABaseX;
-        result = finalCoverage >> Slope::kAAFracBitsX;
+        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABase;
+        result = finalCoverage >> Slope::kAAFracBits;
         return true;
     }
 
@@ -439,13 +439,13 @@ struct Evaluator {
         const i32 endX = ((fracStart & Slope::kMask) + dx - Slope::kOne) >> Slope::kFracBits;
         const i32 deltaX = endX - startX + 1;
         const i32 baseCoverage = ctx.stack.back();
-        const i32 fullCoverage = ((deltaX * ctx.vars.height * Slope::kAARange) << Slope::kAAFracBitsX) / ctx.vars.width;
+        const i32 fullCoverage = ((deltaX * ctx.vars.height * Slope::kAARange) << Slope::kAAFracBits) / ctx.vars.width;
         const i32 coverageStep = fullCoverage / deltaX;
         const i32 coverageBias = coverageStep / 2;
         const i32 offset = ctx.vars.x - startX;
         const i32 fracCoverage = baseCoverage + offset * coverageStep;
-        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABaseX;
-        result = finalCoverage >> Slope::kAAFracBitsX;
+        const i32 finalCoverage = (fracCoverage + coverageBias) % Slope::kAABase;
+        result = finalCoverage >> Slope::kAAFracBits;
         return true;
     }
 

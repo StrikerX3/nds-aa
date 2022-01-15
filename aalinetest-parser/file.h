@@ -64,7 +64,7 @@ inline std::unique_ptr<Data> readFile(std::filesystem::path path) {
                 char entry;
                 in.read(&entry, 1);
                 while ((uint8_t)entry != 0xFF) {
-                    lines[prevY][prevX].spans[y][x++] = entry;
+                    lines[prevY][prevX].pixels[(y << 8) | (x++)] = entry;
                     in.read(&entry, 1);
                 }
             }

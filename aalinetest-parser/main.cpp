@@ -9,7 +9,7 @@
 #include "interactive_eval.h"
 #include "tester.h"
 
-int main1() {
+int main() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
@@ -18,24 +18,24 @@ int main1() {
     // auto dataBL = readFile("data/BL.bin");
     // auto dataBR = readFile("data/BR.bin");
 
-    // auto dataT = readFile("C:/temp/T.bin");
-    // auto dataB = readFile("C:/temp/B.bin");
-    // auto dataL = readFile("C:/temp/L.bin");
-    auto dataR = readFile("C:/temp/R.bin");
+    auto dataT = readFile("E:/Development/_refs/NDS/Research/Antialiasing/T.bin");
+    auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
+    auto dataL = readFile("E:/Development/_refs/NDS/Research/Antialiasing/L.bin");
+    auto dataR = readFile("E:/Development/_refs/NDS/Research/Antialiasing/R.bin");
 
-    // if (dataT)
-    //    test(*dataT);
-    // if (dataB)
-    //    test(*dataB);
-    // if (dataL)
-    //    test(*dataL);
+    if (dataT)
+        test(*dataT);
+    if (dataB)
+        test(*dataB);
+    if (dataL)
+        test(*dataL);
     if (dataR)
         test(*dataR);
 
-    // if (dataT) writeImages(*dataT, "C:/temp/T");
-    // if (dataB) writeImages(*dataB, "C:/temp/B");
-    // if (dataL) writeImages(*dataL, "C:/temp/L");
-    // if (dataR) writeImages(*dataR, "C:/temp/R");
+    // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
+    // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
+    // if (dataL) writeImages(*dataL, "E:/Development/_refs/NDS/Research/Antialiasing/L");
+    // if (dataR) writeImages(*dataR, "E:/Development/_refs/NDS/Research/Antialiasing/R");
 
     return EXIT_SUCCESS;
 }
@@ -43,14 +43,14 @@ int main1() {
 // --------------------------------------------------------------------------------
 
 int main2() {
-    extractDataSet("C:/temp");
+    extractDataSet("E:/Development/_refs/NDS/Research/Antialiasing");
     return EXIT_SUCCESS;
 }
 
 // --------------------------------------------------------------------------------
 
-int main() {
-    runInteractiveEvaluator("C:/temp");
+int main3() {
+    runInteractiveEvaluator("E:/Development/_refs/NDS/Research/Antialiasing");
     return EXIT_SUCCESS;
 }
 

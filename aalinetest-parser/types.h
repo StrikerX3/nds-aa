@@ -15,7 +15,7 @@ using u32 = uint32_t;
 using i32 = int32_t;
 
 struct Line {
-    std::unordered_map<u8, std::array<u8, 256>> spans;
+    std::unordered_map<u16, u8> pixels;
 };
 
 struct Data {

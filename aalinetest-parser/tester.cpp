@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <iostream>
 
-void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
+void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch) {
     // Helper function that prints the mismatch message on the first occurrence of a mismatch
     auto foundMismatch = [&] {
         if (!mismatch) {
@@ -15,12 +15,12 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
     };
 
     // Create and configure the slopes
-    //                   origins
-    //              ltSlope  rtSlope
-    // TEST_TOP       0,0    255,0
-    // TEST_BOTTOM    0,191  255,191
-    // TEST_LEFT      0,0      0,191
-    // TEST_RIGHT   255,0    255,191
+    //                   origins            targets   (+ means w or h; - means 256-w or 192-h)
+    //              ltSlope  rtSlope    ltSlope  rtSlope
+    // TEST_TOP       0,0    256,0        +,+      -,+
+    // TEST_BOTTOM    0,192  256,192      +,-      -,-
+    // TEST_LEFT      0,0      0,192      +,+      +,-
+    // TEST_RIGHT   256,0    256,192      -,+      -,-
 
     Slope ltSlope; // left or top
     Slope rbSlope; // right or bottom
@@ -28,14 +28,19 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
     i32 ltOriginY = (data.type != TEST_BOTTOM) ? 0 : 192;
     i32 rbOriginX = (data.type != TEST_LEFT) ? 256 : 0;
     i32 rbOriginY = (data.type != TEST_TOP) ? 192 : 0;
-    ltSlope.Setup(ltOriginX, ltOriginY, testX, testY);
-    rbSlope.Setup(rbOriginX, rbOriginY, testX, testY);
-    std::cout << rbSlope.Width() << "x" << rbSlope.Height() << "\n";
+    i32 ltTargetX = (data.type != TEST_RIGHT) ? slopeWidth : 256 - slopeWidth;
+    i32 ltTargetY = (data.type != TEST_BOTTOM) ? slopeHeight : 192 - slopeHeight;
+    i32 rbTargetX = (data.type != TEST_LEFT) ? 256 - slopeWidth : slopeWidth;
+    i32 rbTargetY = (data.type != TEST_TOP) ? 192 - slopeHeight : slopeHeight;
+    ltSlope.Setup(ltOriginX, ltOriginY, ltTargetX, ltTargetY);
+    rbSlope.Setup(rbOriginX, rbOriginY, rbTargetX, rbTargetY);
+    std::cout << ltSlope.Width() << "x" << ltSlope.Height() << " | " << rbSlope.Width() << "x" << rbSlope.Height()
+              << "\n";
 
     i32 ltStartY = ltOriginY;
-    i32 ltEndY = testY;
+    i32 ltEndY = ltTargetY;
     i32 rbStartY = rbOriginY;
-    i32 rbEndY = testY;
+    i32 rbEndY = rbTargetY;
 
     auto adjustY = [&](i32 &startY, i32 &endY) {
         if (startY == endY) {
@@ -59,73 +64,45 @@ void testSlope(const Data &data, i32 testX, i32 testY, bool &mismatch) {
 
     // Generate slopes and check the coverage values throughout the horizontal span
     for (i32 y = startY; y < endY; y++) {
-        auto calcSlope = [&](const Slope &slope, std::string slopeName) {
+        auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY) {
             i32 startX = slope.XStart(y);
             i32 endX = slope.XEnd(y);
-            if (slope.IsNegative()) {
-                std::swap(startX, endX);
-            }
-            for (i32 x = startX; x <= endX; x++) {
+            i32 incX = slope.IsNegative() ? -1 : +1;
+            // if (slope.IsNegative()) {
+            //     std::swap(startX, endX);
+            // }
+            for (i32 x = startX; slope.IsNegative() ? x >= endX : x <= endX; x += incX) {
                 const i32 coverage = slope.AACoverage(x, y);
                 const i32 fracCoverage = slope.FracAACoverage(x, y);
-                const i32 aaFracBits = slope.IsXMajor() ? Slope::kAAFracBitsX : Slope::kAAFracBitsY;
+                const i32 aaFracBits = Slope::kAAFracBits;
 
                 // Compare against data captured from hardware
-                if (!data.lines[testY][testX].spans.contains(y)) {
-                    if (coverage != 0) {
-                        foundMismatch();
-
-                        // clang-format off
-                        std::cout << std::setw(3) << std::right << testX << "x" << std::setw(3) << std::left << testY;
-                        std::cout << " @ " << std::setw(3) << std::right << x << "x" << std::setw(3) << std::left << y;
-                        std::cout << "  " << slopeName << ": " << std::setw(2) << std::right << coverage << " != " << std::setw(2) << (u32)0;
-                        std::cout << "  (" << std::setw(4) << fracCoverage << "  "
-                            << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << "."
-                            << std::setw(2) << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ")";
-                            std::cout << "  AA step = " << slope.AAStep() << "  bias = " << slope.AABias();
-                        std::cout << "\n";
-                        // clang-format on
-                    }
-                } else {
-                    auto &span = data.lines[testY][testX].spans.at(y);
-                    if (coverage != span[x]) {
-                        foundMismatch();
-
-                        // clang-format off
-                        std::cout << std::setw(3) << std::right << testX << "x" << std::setw(3) << std::left << testY;
-                        std::cout << " @ " << std::setw(3) << std::right << x << "x" << std::setw(3) << std::left << y;
-                        std::cout << "  " << slopeName << ": " << std::setw(2) << std::right << coverage << " != " << std::setw(2) << (u32)span[x];
-                        std::cout << "  (" << std::setw(4) << fracCoverage << "  "
-                            << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << "."
-                            << std::setw(2) << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ")";
-                            std::cout << "  AA step = " << slope.AAStep() << "  bias = " << slope.AABias();
-                        std::cout << "\n";
-                        // clang-format on
-                    } else {
-
-                        // TODO: remove this branch
-                        // clang-format off
-                        std::cout << std::setw(3) << std::right << testX << "x" << std::setw(3) << std::left << testY;
-                        std::cout << " @ " << std::setw(3) << std::right << x << "x" << std::setw(3) << std::left << y;
-                        std::cout << "  " << slopeName << ": " << std::setw(2) << std::right << coverage << " == " <<
-                        std::setw(2) << (u32)span[x]; std::cout << "  (" << std::setw(4) << fracCoverage << "  "
-                            << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << "."
-                            << std::setw(2) << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ")";
-                            std::cout << "  AA step = " << slope.AAStep() << "  bias = " << slope.AABias();
-                        std::cout << "\n";
-                        // clang-format on
-                    }
+                auto &line = data.lines[testY][testX];
+                u16 pixelIndex = (y << 8) | x;
+                u8 pixel = line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
+                bool match = (coverage == pixel);
+                if (!match) {
+                    foundMismatch();
                 }
+                // TODO: print mismatches only
+                std::cout << std::setw(3) << std::right << testX << "x" << std::setw(3) << std::left << testY  //
+                          << " @ " << std::setw(3) << std::right << x << "x" << std::setw(3) << std::left << y //
+                          << "  " << slopeName << ": " << std::setw(2) << std::right << coverage               //
+                          << (match ? " == " : " != ") << std::setw(2) << (u32)pixel                           //
+                          << "  (" << std::setw(4) << fracCoverage << "  "                                     //
+                          << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << "." << std::setw(2) //
+                          << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ")"                      //
+                          << "  AA step = " << slope.AAStep() << "  bias = " << slope.AABias() << "\n";
             }
         };
 
-        /*if (y >= ltStartY && y < ltEndY) {
-            calcSlope(ltSlope, "LT");
-        }*/
-        // TODO: reenable this
-        if (y >= rbStartY && y < rbEndY) {
-            calcSlope(rbSlope, "RB");
+        if (y >= ltStartY && y < ltEndY) {
+            calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
         }
+        // TODO: reenable this
+        /*if (y >= rbStartY && y < rbEndY) {
+            calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
+        }*/
     }
 }
 
@@ -147,7 +124,13 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
     // testSlope(data, 3, 2, mismatch);
     // testSlope(data, 222, 3, mismatch);
-    testSlope(data, 256 - 15, 192 - 6, mismatch);
+    // testSlope(data, 256 - 15, 192 - 6, mismatch);
+    // testSlope(data, 256 - 6, 192 - 15, mismatch);
+    // testSlope(data, 2, 15, mismatch);
+    // testSlope(data, 4, 30, mismatch);
+    // testSlope(data, 24, 180, mismatch);
+    // testSlope(data, 6, 15, mismatch);
+    testSlope(data, 84, 4, mismatch);
 
     // Selected cases where LT breaks
     // testSlope(data, 54, 2, mismatch); // -1
