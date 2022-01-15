@@ -135,6 +135,7 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 4, 30, mismatch);
     // testSlope(data, 24, 180, mismatch);
     testSlope(data, 6, 15, mismatch);
+    // testSlope(data, 6, 6, mismatch);
     // testSlope(data, 84, 4, mismatch);
 
     // Selected cases where LT breaks

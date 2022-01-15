@@ -142,10 +142,10 @@ public:
 
         // Compute coordinate deltas and determine if the slope is X-major
         m_xMajor = (m_width > m_height);
-        m_diagonal = (m_width == m_height);
+        const bool diagonal = (m_width == m_height);
 
         // Precompute bias for X-major or diagonal slopes
-        if (m_xMajor || m_diagonal) {
+        if (m_xMajor || diagonal) {
             if (m_negative) {
                 m_x0Frac -= kBias;
             } else {
@@ -232,14 +232,6 @@ public:
     }
 
     /// <summary>
-    /// Determines if the slope is diagonal.
-    /// </summary>
-    /// <returns>true if the slope is diagonal.</returns>
-    constexpr bool IsDiagonal() const {
-        return m_diagonal;
-    }
-
-    /// <summary>
     /// Determines if the slope is negative (i.e. X decreases as Y increases).
     /// </summary>
     /// <returns>true if the slope is negative.</returns>
@@ -299,10 +291,7 @@ public:
         //   - Positive gradient: full coverage
         //   - Negative gradient: zero coverage
 
-        if (m_diagonal) {
-            // TODO: Perfect diagonals should be computed on the non-Y-major case
-            return (kAARange / 2) << kAAFracBits;
-        } else if (m_xMajor) {
+        if (m_xMajor) {
             // TODO: fix the calculation
             // Theory 0: the formula does not use the existing X coordinate; instead, it calculates its own offsets
             // Theory 1: the X-major formula depends on the Y coordinate
@@ -358,5 +347,4 @@ private:
     i32 m_dx;        // X displacement per scanline
     bool m_negative; // True if the slope is negative (X1 < X0)
     bool m_xMajor;   // True if the slope is X-major (X1-X0 > Y1-Y0)
-    bool m_diagonal; // True if the slope is diagonal (X1-X0 == Y1-Y0)
 };
