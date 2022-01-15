@@ -63,20 +63,18 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch
     const i32 endY = std::max(ltEndY, rbEndY);
 
     // Generate slopes and check the coverage values
-    // TODO: ignore slope points that overlap with other slopes
-    // - Left test draws a vertical line on the left side of the screen that has higher priority over the tested slopes
-    //   producing a coverage value of 31 on every pixel at X=0
-    // - More generally, left edges have precedence over right edges
-    // - Probably the best solution is to adopt the dataset generated in dataset.cpp, which combines Top and Bottom test
-    //   data into comprehensive slope data based on their orientation
     for (i32 y = startY; y < endY; y++) {
         auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY) {
             i32 startX = slope.XStart(y);
             i32 endX = slope.XEnd(y);
             i32 incX = slope.IsNegative() ? -1 : +1;
-            // if (slope.IsNegative()) {
-            //     std::swap(startX, endX);
-            // }
+            if (data.type == TEST_LEFT && startX == 0) {
+                // The Left test draws a vertical line on the left side of the screen with full coverage that has higher
+                // priority over the tested slopes, producing a coverage value of 31 on every pixel at X=0. This line is
+                // a left edge, which has precedence over right edges. We'll skip those pixels since the same cases are
+                // tested on the Bottom and Top tests with no overridden pixels.
+                startX++;
+            }
             for (i32 x = startX; slope.IsNegative() ? x >= endX : x <= endX; x += incX) {
                 const i32 coverage = slope.AACoverage(x, y);
                 const i32 fracCoverage = slope.FracAACoverage(x, y);
@@ -137,6 +135,9 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     testSlope(data, 6, 15, mismatch);
     // testSlope(data, 6, 6, mismatch);
     // testSlope(data, 84, 4, mismatch);
+    // testSlope(data, 186, 185, mismatch);
+    // testSlope(data, 185, 186, mismatch);
+    // testSlope(data, 54, 2, mismatch);
 
     // Selected cases where LT breaks
     // testSlope(data, 54, 2, mismatch); // -1

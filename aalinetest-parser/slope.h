@@ -326,14 +326,22 @@ public:
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAOne;
             return finalCoverage;
         } else {
-            const i32 fullCoverage = ((m_height * m_width * kAARange) << kAAFracBits) / m_height;
+            const i32 recip = (kAARange << kFracBits) / m_height;
+            const i32 coverageStep = m_width * recip;
+            const i32 coverageBias = coverageStep / 2;
+            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
+            const i32 yOffset = y - m_y0;
+            const i32 fracCoverage = yOffset * coverageStep;
+            const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
+            return std::min<i32>(finalCoverage >> (kFracBits - kAAFracBits), kAAOne - 1);
+            /*const i32 fullCoverage = ((m_height * m_width * kAARange) << kAAFracBits) / m_height;
             const i32 coverageStep = fullCoverage / m_height;
             const i32 coverageBias = coverageStep / 2;
             const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
             const i32 yOffset = y - m_y0;
             const i32 fracCoverage = yOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * kAAOne;
-            return std::min<i32>(finalCoverage, kAAOne - 1);
+            return std::min<i32>(finalCoverage, kAAOne - 1);*/
         }
         // TODO: distinguish between left and right edges in order to invert gradients
     }
