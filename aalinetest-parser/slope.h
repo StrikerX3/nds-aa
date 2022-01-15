@@ -125,13 +125,14 @@ public:
         }
 
         // Store reference coordinates
-        m_x0 = x0 << kFracBits;
+        m_x0 = x0;
+        m_x0Frac = x0 << kFracBits;
         m_y0 = y0;
 
         // Determine if this is a negative slope and adjust accordingly
         m_negative = (x1 < x0);
         if (m_negative) {
-            m_x0--;
+            m_x0Frac--;
             std::swap(x0, x1);
         }
 
@@ -146,9 +147,9 @@ public:
         // Precompute bias for X-major or diagonal slopes
         if (m_xMajor || m_diagonal) {
             if (m_negative) {
-                m_x0 -= kBias;
+                m_x0Frac -= kBias;
             } else {
-                m_x0 += kBias;
+                m_x0Frac += kBias;
             }
         }
 
@@ -169,9 +170,9 @@ public:
     constexpr i32 FracXStart(i32 y) const {
         i32 displacement = (y - m_y0) * m_dx;
         if (m_negative) {
-            return m_x0 - displacement;
+            return m_x0Frac - displacement;
         } else {
-            return m_x0 + displacement;
+            return m_x0Frac + displacement;
         }
     }
 
@@ -280,7 +281,8 @@ public:
     /// <returns>The antialiasing coverage value at (X,Y)</returns>
     constexpr i32 FracAACoverage(i32 x, i32 y) const {
         // Antialiasing notes:
-        // - AA coverage calculation uses two different formulas: X-major and non-X-major (includes diagonals)
+        // - AA coverage calculation uses different variables depending on whether the slope is X-major or not
+        //   - The formula is consistent across all slope types
         // - Perfectly horizontal or vertical edges (DX or DY == 0) are drawn in full alpha
         // - Perfectly diagonal edges (DX == DY) are drawn in half alpha (16)
         //   - Note that this is actually taken into account by the Y-major formula and is not a special case
@@ -338,16 +340,18 @@ public:
             const i32 fullCoverage = ((m_height * m_width * kAARange) << kAAFracBits) / m_height;
             const i32 coverageStep = fullCoverage / m_height;
             const i32 coverageBias = coverageStep / 2;
-            const i32 offset = y - m_y0;
-            const i32 fracCoverage = offset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) % kAAOne;
-            return finalCoverage;
+            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
+            const i32 yOffset = y - m_y0;
+            const i32 fracCoverage = yOffset * coverageStep;
+            const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * kAAOne;
+            return std::min<i32>(finalCoverage, kAAOne - 1);
         }
         // TODO: distinguish between left and right edges in order to invert gradients
     }
 
 private:
-    i32 m_x0;        // X0 coordinate (minus 1 if this is a negative slope)
+    i32 m_x0;        // X0 coordinate
+    i32 m_x0Frac;    // Fractional X0 coordinate (minus 1 if this is a negative slope)
     i32 m_y0;        // Y0 coordinate
     i32 m_width;     // Slope width (abs(X1 - X0))
     i32 m_height;    // Slope height (abs(Y1 - Y0))

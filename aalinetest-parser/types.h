@@ -14,6 +14,7 @@ using u16 = uint16_t;
 using u32 = uint32_t;
 using i32 = int32_t;
 
+// TODO: optimize data structure
 struct Line {
     std::unordered_map<u16, u8> pixels;
 };
