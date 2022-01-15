@@ -367,17 +367,14 @@ public:
             //   - These two values come from the corresponding negative slope at the same exact position within the
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
 
-            // TODO: negative slopes
-            const i32 startX = XStart(y);
-            const i32 endX = XEnd(y);
+            const i32 startX = m_negative ? XEnd(y) : XStart(y);
+            const i32 endX = m_negative ? XStart(y) : XEnd(y);
             const i32 deltaX = endX - startX + 1;
-            const i32 baseCoverage = ((startX * m_height * kAARange) << kAAFracBits) / m_width;
             const i32 fullCoverage = ((deltaX * m_height * kAARange) << kAAFracBits) / m_width;
             const i32 coverageStep = fullCoverage / deltaX;
             const i32 coverageBias = coverageStep / 2;
             const i32 offset = x - startX;
-            // const i32 fracCoverage = baseCoverage + fullCoverage - (deltaX - offset) * coverageStep;
-            const i32 fracCoverage = baseCoverage + offset * coverageStep;
+            const i32 fracCoverage = offset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAABase;
             return finalCoverage;
         } else {

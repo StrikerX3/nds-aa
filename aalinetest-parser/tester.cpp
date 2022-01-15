@@ -62,7 +62,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch
     const i32 startY = std::min(ltStartY, rbStartY);
     const i32 endY = std::max(ltEndY, rbEndY);
 
-    // Generate slopes and check the coverage values throughout the horizontal span
+    // Generate slopes and check the coverage values
     for (i32 y = startY; y < endY; y++) {
         auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY) {
             i32 startX = slope.XStart(y);
