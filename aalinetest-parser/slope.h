@@ -326,6 +326,10 @@ public:
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAOne;
             return finalCoverage;
         } else {
+            // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
+            if (m_width != m_height && XStart(y) != XStart(y + 1)) {
+                return kAAOne - 1;
+            }
             const i32 recip = (kAARange << kFracBits) / m_height;
             const i32 coverageStep = m_width * recip;
             const i32 coverageBias = coverageStep / 2;
@@ -333,7 +337,7 @@ public:
             const i32 yOffset = y - m_y0;
             const i32 fracCoverage = yOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
-            return std::min<i32>(finalCoverage >> (kFracBits - kAAFracBits), kAAOne - 1);
+            return finalCoverage >> (kFracBits - kAAFracBits);
             /*const i32 fullCoverage = ((m_height * m_width * kAARange) << kAAFracBits) / m_height;
             const i32 coverageStep = fullCoverage / m_height;
             const i32 coverageBias = coverageStep / 2;

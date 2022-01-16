@@ -132,10 +132,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 2, 15, mismatch);
     // testSlope(data, 4, 30, mismatch);
     // testSlope(data, 24, 180, mismatch);
-    testSlope(data, 6, 15, mismatch);
+    // testSlope(data, 6, 15, mismatch);
+    // testSlope(data, 6, 37, mismatch);
     // testSlope(data, 6, 6, mismatch);
     // testSlope(data, 84, 4, mismatch);
-    // testSlope(data, 186, 185, mismatch);
+    testSlope(data, 186, 185, mismatch);
     // testSlope(data, 185, 186, mismatch);
     // testSlope(data, 54, 2, mismatch);
 
