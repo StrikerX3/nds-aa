@@ -106,9 +106,9 @@ public:
     static constexpr u32 kAAFracBits = 5;
 
     /// <summary>
-    /// The value 1.0 with antialiasing fractional bits.
+    /// The antialiasing coverage value range with fractional bits.
     /// </summary>
-    static constexpr u32 kAAOne = kAARange << kAAFracBits;
+    static constexpr u32 kAAFracRange = kAARange << kAAFracBits;
 
     /// <summary>
     /// Configures the slope to interpolate the line (X0,X1)-(Y0,Y1) using screen coordinates.
@@ -315,6 +315,13 @@ public:
             //   - These two values come from the corresponding negative slope at the same exact position within the
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
 
+            /*const i32 recip = kAAFracRange / m_width;
+            const i32 coverageStep = m_height * recip;
+            const i32 coverageBias = coverageStep / 2;
+            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
+            const i32 fracCoverage = xOffset * coverageStep;
+            const i32 finalCoverage = (fracCoverage + coverageBias) & (kAAFracRange - 1);
+            return finalCoverage;*/
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 endX = m_negative ? XStart(y) : XEnd(y);
             const i32 deltaX = endX - startX + 1;
@@ -323,12 +330,12 @@ public:
             const i32 coverageBias = coverageStep / 2;
             const i32 offset = x - startX;
             const i32 fracCoverage = offset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) % kAAOne;
+            const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return finalCoverage;
         } else {
             // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
             if (m_width != m_height && XStart(y) != XStart(y + 1)) {
-                return kAAOne - 1;
+                return kAAFracRange - 1;
             }
             const i32 recip = (kAARange << kFracBits) / m_height;
             const i32 coverageStep = m_width * recip;
@@ -338,14 +345,6 @@ public:
             const i32 fracCoverage = yOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
             return finalCoverage >> (kFracBits - kAAFracBits);
-            /*const i32 fullCoverage = ((m_height * m_width * kAARange) << kAAFracBits) / m_height;
-            const i32 coverageStep = fullCoverage / m_height;
-            const i32 coverageBias = coverageStep / 2;
-            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
-            const i32 yOffset = y - m_y0;
-            const i32 fracCoverage = yOffset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * kAAOne;
-            return std::min<i32>(finalCoverage, kAAOne - 1);*/
         }
         // TODO: distinguish between left and right edges in order to invert gradients
     }
