@@ -117,17 +117,19 @@ public:
     /// <param name="y0">First Y coordinate</param>
     /// <param name="x1">Second X coordinate</param>
     /// <param name="y1">Second Y coordinate</param>
-    constexpr void Setup(i32 x0, i32 y0, i32 x1, i32 y1) {
+    /// <param name="left">true for left edge, false for right edge</param>
+    constexpr void Setup(i32 x0, i32 y0, i32 x1, i32 y1, bool left) {
         // Always interpolate top to bottom
         if (y1 < y0) {
             std::swap(x0, x1);
             std::swap(y0, y1);
         }
 
-        // Store reference coordinates
+        // Store reference coordinates and edge side
         m_x0 = x0;
         m_x0Frac = x0 << kFracBits;
         m_y0 = y0;
+        m_leftEdge = left;
 
         // Determine if this is a negative slope and adjust accordingly
         m_negative = (x1 < x0);
@@ -232,11 +234,51 @@ public:
     }
 
     /// <summary>
+    /// Determines if the slope is Y-major.
+    /// </summary>
+    /// <returns>true if the slope is Y-major, but not a perfect diagonal.</returns>
+    constexpr bool IsYMajor() const {
+        return !m_xMajor && !IsDiagonal();
+    }
+
+    /// <summary>
+    /// Determines if the slope is a perfect diagonal.
+    /// </summary>
+    /// <returns>true if the slope's width is equal to its height.</returns>
+    constexpr bool IsDiagonal() const {
+        return m_width == m_height;
+    }
+
+    /// <summary>
     /// Determines if the slope is negative (i.e. X decreases as Y increases).
     /// </summary>
     /// <returns>true if the slope is negative.</returns>
     constexpr bool IsNegative() const {
         return m_negative;
+    }
+
+    /// <summary>
+    /// Determines if the slope is positive (i.e. X increases as Y increases).
+    /// </summary>
+    /// <returns>true if the slope is positive.</returns>
+    constexpr bool IsPositive() const {
+        return !m_negative;
+    }
+
+    /// <summary>
+    /// Determines if the slope is a left edge.
+    /// </summary>
+    /// <returns>true if the slope is a left edge.</returns>
+    constexpr bool IsLeftEdge() const {
+        return m_leftEdge;
+    }
+
+    /// <summary>
+    /// Determines if the slope is a right edge.
+    /// </summary>
+    /// <returns>true if the slope is a right edge.</returns>
+    constexpr bool IsRightEdge() const {
+        return !m_leftEdge;
     }
 
     /// <summary>
@@ -291,6 +333,29 @@ public:
         //   - Positive gradient: full coverage
         //   - Negative gradient: zero coverage
 
+        const auto invertGradient = [&](i32 coverage) -> i32 {
+            // LR = m_leftEdge (false = R, true = L)
+            // PN = m_negative (false = P, true = N)
+            // XY = m_xMajor   (false = Y, true = X)
+            //
+            // Gradients that need to be inverted: LPY LNX RPX RNY
+            //   L P N    R P N
+            //   Y #      Y   #
+            //   X   #    X #
+            //
+            // XY != PN and XY == PN truth tables:
+            //   != PN    == PN
+            //   XY Y X   XY Y X
+            //    Y - +    Y + -
+            //    X + -    X - +
+            // Any of these match our requirements:
+            //   LR == (XY == PN)
+            //   LR != (XY != PN)
+            if (m_leftEdge == (m_negative == m_xMajor)) {
+                coverage ^= kAAFracRange - 1;
+            }
+            return coverage;
+        };
         if (m_xMajor) {
             // TODO: fix the calculation
             // Theory 0: the formula does not use the existing X coordinate; instead, it calculates its own offsets
@@ -317,7 +382,7 @@ public:
 
             if (m_width == 0) {
                 // Avoid division by zero
-                return kAAFracRange - 1;
+                return invertGradient(kAAFracRange - 1);
             }
 
             // TODO: only works for the first scanline of a slope!
@@ -349,15 +414,15 @@ public:
             const i32 offset = m_negative ? m_x0 - x - 1 : x - m_x0; // probably should be relative to startX
             const i32 fracCoverage = offset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
-            return finalCoverage;
+            return invertGradient(finalCoverage);
         } else {
             if (m_width != m_height && XStart(y) != XStart(y + 1)) {
                 // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
-                return kAAFracRange - 1;
+                return invertGradient(kAAFracRange - 1);
             }
             if (m_width == 0 || m_height == 0) {
                 // Avoid division by zero
-                return kAAFracRange - 1;
+                return invertGradient(kAAFracRange - 1);
             }
             const i32 recip = (kAARange << kFracBits) / m_height;
             const i32 coverageStep = m_width * recip;
@@ -366,9 +431,8 @@ public:
             const i32 yOffset = y - m_y0;
             const i32 fracCoverage = yOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
-            return finalCoverage >> (kFracBits - kAAFracBits);
+            return invertGradient(finalCoverage >> (kFracBits - kAAFracBits));
         }
-        // TODO: distinguish between left and right edges in order to invert gradients
     }
 
 private:
@@ -380,4 +444,5 @@ private:
     i32 m_dx;        // X displacement per scanline
     bool m_negative; // True if the slope is negative (X1 < X0)
     bool m_xMajor;   // True if the slope is X-major (X1-X0 > Y1-Y0)
+    bool m_leftEdge; // True if this is a left edge, false for a right edge
 };

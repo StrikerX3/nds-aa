@@ -80,14 +80,21 @@ void extractDataSet(std::filesystem::path root) {
             adjustY(bltCoords);
             adjustY(brbCoords);
 
+            // Edge side per test:
+            //           LT    RB
+            // TOP      left  right
+            // BOTTOM   left  right
+            // LEFT     right right
+            // RIGHT    left  left
+
             Slope tltSlope{}; // top LT
             Slope trbSlope{}; // top RB
             Slope bltSlope{}; // bottom LT
             Slope brbSlope{}; // bottom RB
-            tltSlope.Setup(tltCoords.startX, tltCoords.startY, tltCoords.endX, tltCoords.endY);
-            trbSlope.Setup(trbCoords.startX, trbCoords.startY, trbCoords.endX, trbCoords.endY);
-            bltSlope.Setup(bltCoords.startX, bltCoords.startY, bltCoords.endX, bltCoords.endY);
-            brbSlope.Setup(brbCoords.startX, brbCoords.startY, brbCoords.endX, brbCoords.endY);
+            tltSlope.Setup(tltCoords.startX, tltCoords.startY, tltCoords.endX, tltCoords.endY, true);
+            trbSlope.Setup(trbCoords.startX, trbCoords.startY, trbCoords.endX, trbCoords.endY, false);
+            bltSlope.Setup(bltCoords.startX, bltCoords.startY, bltCoords.endX, bltCoords.endY, true);
+            brbSlope.Setup(brbCoords.startX, brbCoords.startY, brbCoords.endX, brbCoords.endY, false);
 
             auto calcSlope = [&](i32 xOffset, i32 startY, i32 yy, const Data &data, const Slope &slope, Output &out) {
                 // Skip diagonals and perfect horizontals/verticals

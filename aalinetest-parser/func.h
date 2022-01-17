@@ -370,9 +370,9 @@ struct Evaluator {
 
     void BeginEval(const DataPoint &dataPoint, bool positive, bool left) {
         if (positive) {
-            ctx.slope.Setup(0, 0, dataPoint.width, dataPoint.height);
+            ctx.slope.Setup(0, 0, dataPoint.width, dataPoint.height, left);
         } else {
-            ctx.slope.Setup(dataPoint.width, 0, 0, dataPoint.height);
+            ctx.slope.Setup(dataPoint.width, 0, 0, dataPoint.height, left);
         }
         ctx.stack.clear();
         ctx.vars.Apply(dataPoint, left);
