@@ -328,10 +328,16 @@ public:
             // - the latter case is more interesting because the increment pattern is different, which indicates that
             //   the fraction doesn't match one of our existing entries
             //     00011222 vs. 00011122  (3-2-3 vs. 3-3-2)
+            // 161x2 has the following initial biases:
+            //   Y=0 -> 4..7 (6)   (X=0..80)
+            //   Y=1 -> 12..15     (X=81..160)
             // 161x3 has the following initial biases:
-            //   Y=0 -> 9     (X=0..53)          16
-            //   Y=1 -> 15    (X=54..106)        7
-            //   Y=2 -> 3     (X=107..160)       11
+            //   Y=0 -> 9     (X=0..53)
+            //   Y=1 -> 15    (X=54..106)
+            //   Y=2 -> 3     (X=107..160)
+            //
+            // Plan: figure out the coverageBias per scanline as described above
+            //
             // const i32 fracStartX = m_negative ? FracXEnd(y) : FracXStart(y);
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 endX = m_negative ? XStart(y) : XEnd(y);
@@ -340,7 +346,7 @@ public:
             const i32 coverageStep = fullCoverage / deltaX;
             const i32 coverageBias = coverageStep / 2;
             // const i32 coverageBias = (fracStartX % kOne) >> (kFracBits - kAAFracBits); // incorrect
-            const i32 offset = m_negative ? m_x0 - x - 1 : x - m_x0;
+            const i32 offset = m_negative ? m_x0 - x - 1 : x - m_x0; // probably should be relative to startX
             const i32 fracCoverage = offset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return finalCoverage;
