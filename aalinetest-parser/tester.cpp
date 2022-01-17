@@ -94,7 +94,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
             if ((data.type == TEST_TOP || data.type == TEST_BOTTOM) && slope.Height() == 0) {
                 // The Top and bottom tests draw a horizontal line at the top or bottom of the screen. Only the leftmost
                 // pixel of the left edge is valid.
-                if (slope.IsNegative()) {
+                if (slope.IsNegative() == slope.IsLeftEdge()) {
                     startX = endX;
                 } else {
                     endX = startX;
@@ -148,7 +148,6 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
             testSlope(data, x, y, result);
         }
     }
-
     // testSlope(data, 128, 96, result);
     // testSlope(data, 96, 128, result);
 
