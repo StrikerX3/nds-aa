@@ -133,9 +133,9 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
         if (y >= ltStartY && y < ltEndY) {
             calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
         }
-        if (y >= rbStartY && y < rbEndY) {
+        /*if (y >= rbStartY && y < rbEndY) {
             calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
-        }
+        }*/
     }
 }
 

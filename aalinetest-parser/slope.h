@@ -382,8 +382,14 @@ public:
 
             if (m_width == 0) {
                 // Avoid division by zero
-                return invertGradient(kAAFracRange - 1);
+                return kAAFracRange - 1;
             }
+
+            // TODO: rework formula to work nicely with right edges
+            // - the gradient is basically the same, but it starts from the right side of the screen
+            // - extend the logic to the entire slope as well
+            //   - potentially gets rid of the bit tricks to make a "ceiling" function in FracXEnd
+            //   - potentially eliminates a lot of if conditions
 
             // TODO: only works for the first scanline of a slope!
             // drifts from real values on subsequent scanlines
@@ -422,7 +428,7 @@ public:
             }
             if (m_width == 0 || m_height == 0) {
                 // Avoid division by zero
-                return invertGradient(kAAFracRange - 1);
+                return kAAFracRange - 1;
             }
             const i32 recip = (kAARange << kFracBits) / m_height;
             const i32 coverageStep = m_width * recip;

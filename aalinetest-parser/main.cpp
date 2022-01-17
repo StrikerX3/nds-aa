@@ -13,29 +13,16 @@ int main() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
-    // auto dataTL = readFile("data/TL.bin");
-    // auto dataTR = readFile("data/TR.bin");
-    // auto dataBL = readFile("data/BL.bin");
-    // auto dataBR = readFile("data/BR.bin");
-
     auto dataT = readFile("E:/Development/_refs/NDS/Research/Antialiasing/T.bin");
     auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
-    auto dataL = readFile("E:/Development/_refs/NDS/Research/Antialiasing/L.bin");
-    auto dataR = readFile("E:/Development/_refs/NDS/Research/Antialiasing/R.bin");
 
     if (dataT)
         test(*dataT);
     if (dataB)
         test(*dataB);
-    if (dataL)
-        test(*dataL);
-    if (dataR)
-        test(*dataR);
 
     // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
     // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
-    // if (dataL) writeImages(*dataL, "E:/Development/_refs/NDS/Research/Antialiasing/L");
-    // if (dataR) writeImages(*dataR, "E:/Development/_refs/NDS/Research/Antialiasing/R");
 
     return EXIT_SUCCESS;
 }
