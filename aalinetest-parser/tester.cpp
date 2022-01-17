@@ -5,11 +5,17 @@
 #include <iomanip>
 #include <iostream>
 
-void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch) {
+struct TestResult {
+    bool mismatch = false;
+    u64 numMatches = 0;
+    u64 testedPixels = 0;
+};
+
+void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &result) {
     // Helper function that prints the mismatch message on the first occurrence of a mismatch
     auto foundMismatch = [&] {
-        if (!mismatch) {
-            mismatch = true;
+        if (!result.mismatch) {
+            result.mismatch = true;
             std::cout << "found mismatch\n";
         }
     };
@@ -34,8 +40,8 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch
     i32 rbTargetY = (data.type != TEST_TOP) ? 192 - slopeHeight : slopeHeight;
     ltSlope.Setup(ltOriginX, ltOriginY, ltTargetX, ltTargetY);
     rbSlope.Setup(rbOriginX, rbOriginY, rbTargetX, rbTargetY);
-    std::cout << ltSlope.Width() << "x" << ltSlope.Height() << " | " << rbSlope.Width() << "x" << rbSlope.Height()
-              << "\n";
+    /*std::cout << ltSlope.Width() << "x" << ltSlope.Height() << " | " << rbSlope.Width() << "x" << rbSlope.Height()
+              << "\n";*/
 
     i32 ltStartY = ltOriginY;
     i32 ltEndY = ltTargetY;
@@ -68,12 +74,24 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch
             i32 startX = slope.XStart(y);
             i32 endX = slope.XEnd(y);
             i32 incX = slope.IsNegative() ? -1 : +1;
+
+            // All tests draw a triangle with one edge covering the entire span of the screen border given by the test
+            // name. Due to polygon drawing rules and edge precedences, in some cases these pixels will override the
+            // tested slopes with pixels of full coverage, producing false negatives if checked blindly. The following
+            // conditions skip such pixels.
             if (data.type == TEST_LEFT && startX == 0) {
-                // The Left test draws a vertical line on the left side of the screen with full coverage that has higher
-                // priority over the tested slopes, producing a coverage value of 31 on every pixel at X=0. This line is
-                // a left edge, which has precedence over right edges. We'll skip those pixels since the same cases are
-                // tested on the Bottom and Top tests with no overridden pixels.
+                // The Left test draws a vertical line on the left side of the screen which is considered a left edge in
+                // all cases, and thus overrides all pixels at X=0.
                 startX++;
+            }
+            if ((data.type == TEST_TOP || data.type == TEST_BOTTOM) && slope.Height() == 0) {
+                // The Top and bottom tests draw a horizontal line at the top or bottom of the screen. Only the leftmost
+                // pixel of the left edge is valid.
+                if (slope.IsNegative()) {
+                    startX = endX;
+                } else {
+                    endX = startX;
+                }
             }
             for (i32 x = startX; slope.IsNegative() ? x >= endX : x <= endX; x += incX) {
                 const i32 coverage = slope.AACoverage(x, y);
@@ -84,15 +102,17 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch
                 auto &line = data.lines[testY][testX];
                 u16 pixelIndex = (y << 8) | x;
                 u8 pixel = line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
-                bool match = (coverage == pixel);
-                if (!match) {
+                result.testedPixels++;
+                if (coverage == pixel) {
+                    result.numMatches++;
+                } else {
                     foundMismatch();
                 }
-                // TODO: print mismatches only
                 std::cout << std::setw(3) << std::right << testX << "x" << std::setw(3) << std::left << testY  //
                           << " @ " << std::setw(3) << std::right << x << "x" << std::setw(3) << std::left << y //
-                          << "  " << slopeName << ": " << std::setw(2) << std::right << coverage               //
-                          << (match ? " == " : " != ") << std::setw(2) << (u32)pixel                           //
+                          << "  " << slopeName << ": "                                                         //
+                          << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ")
+                          << std::setw(2) << (u32)pixel                                                        //
                           << "  (" << std::setw(4) << fracCoverage << "  "                                     //
                           << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << "." << std::setw(2) //
                           << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ")\n";
@@ -112,109 +132,111 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, bool &mismatch
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     std::cout << "Testing " << name << " slopes... ";
 
-    bool mismatch = false;
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    TestResult result{};
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
-            testSlope(data, x, y, mismatch);
+            testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
         for (i32 x = y + 1; x <= data.maxX; x++) {
-            testSlope(data, x, y, mismatch);
+            testSlope(data, x, y, result);
         }
     }*/
-    // testSlope(data, 3, 2, mismatch);
-    // testSlope(data, 222, 3, mismatch);
-    // testSlope(data, 256 - 15, 192 - 6, mismatch);
-    // testSlope(data, 256 - 6, 192 - 15, mismatch);
-    // testSlope(data, 2, 15, mismatch);
-    // testSlope(data, 4, 30, mismatch);
-    // testSlope(data, 24, 180, mismatch);
-    // testSlope(data, 6, 15, mismatch);
-    // testSlope(data, 6, 37, mismatch);
-    // testSlope(data, 6, 6, mismatch);
-    // testSlope(data, 84, 4, mismatch);
-    //testSlope(data, 186, 185, mismatch);
-    // testSlope(data, 185, 186, mismatch);
-     testSlope(data, 54, 2, mismatch);
+    // testSlope(data, 3, 2, result);
+    // testSlope(data, 222, 3, result);
+    // testSlope(data, 256 - 15, 192 - 6, result);
+    // testSlope(data, 256 - 6, 192 - 15, result);
+    // testSlope(data, 2, 15, result);
+    // testSlope(data, 4, 30, result);
+    // testSlope(data, 24, 180, result);
+    // testSlope(data, 6, 15, result);
+    // testSlope(data, 6, 37, result);
+    // testSlope(data, 6, 6, result);
+    // testSlope(data, 84, 4, result);
+    // testSlope(data, 186, 185, result);
+    // testSlope(data, 185, 186, result);
+    // testSlope(data, 54, 2, result);
 
     // Selected cases where LT breaks
-    // testSlope(data, 54, 2, mismatch); // -1
-    // testSlope(data, 65, 2, mismatch); // -1
-    // testSlope(data, 227, 2, mismatch); // 3x -1
-    // testSlope(data, 56, 5, mismatch); // 2x -1
-    // testSlope(data, 15, 6, mismatch); // 2x -1
-    // testSlope(data, 72, 73, mismatch); // +1, y-major
-    // testSlope(data, 79, 73, mismatch); // +1
-    // testSlope(data, 73, 108, mismatch); // -5, y-major
-    // testSlope(data, 86, 108, mismatch); // 4x -many, y-major
-    // testSlope(data, 110, 108, mismatch); // multiple errors
-    // testSlope(data, 23, 150, mismatch); // -2
-    // testSlope(data, 19, 152, mismatch); // multiple errors, y-major
-    // testSlope(data, 116, 115, mismatch); // hardware produces odd output
-    // testSlope(data, 176, 175, mismatch); // hardware produces odd output
-    // testSlope(data, 185, 184, mismatch); // hardware produces odd output
-    // testSlope(data, 186, 185, mismatch); // hardware produces odd output
-    // testSlope(data, 188, 187, mismatch); // hardware produces odd output
-    // testSlope(data, 189, 188, mismatch); // hardware produces odd output
-    // testSlope(data, 191, 190, mismatch); // hardware produces odd output
-    // testSlope(data, 192, 191, mismatch); // hardware produces odd output
-    // testSlope(data, 236, 185, mismatch); // multiple significant errors
-    // testSlope(data, 253, 126, mismatch);
+    // testSlope(data, 54, 2, result); // -1
+    // testSlope(data, 65, 2, result); // -1
+    // testSlope(data, 227, 2, result); // 3x -1
+    // testSlope(data, 56, 5, result); // 2x -1
+    // testSlope(data, 15, 6, result); // 2x -1
+    // testSlope(data, 72, 73, result); // +1, y-major
+    // testSlope(data, 79, 73, result); // +1
+    // testSlope(data, 73, 108, result); // -5, y-major
+    // testSlope(data, 86, 108, result); // 4x -many, y-major
+    // testSlope(data, 110, 108, result); // multiple errors
+    // testSlope(data, 23, 150, result); // -2
+    // testSlope(data, 19, 152, result); // multiple errors, y-major
+    // testSlope(data, 116, 115, result); // hardware produces odd output
+    // testSlope(data, 176, 175, result); // hardware produces odd output
+    // testSlope(data, 185, 184, result); // hardware produces odd output
+    // testSlope(data, 186, 185, result); // hardware produces odd output
+    // testSlope(data, 188, 187, result); // hardware produces odd output
+    // testSlope(data, 189, 188, result); // hardware produces odd output
+    // testSlope(data, 191, 190, result); // hardware produces odd output
+    // testSlope(data, 192, 191, result); // hardware produces odd output
+    // testSlope(data, 236, 185, result); // multiple significant errors
+    // testSlope(data, 253, 126, result);
 
     // [OK] Perfect diagonals -- should produce a coverage of 16 on every pixel
     /*for (u32 i = 1; i <= 192; i++) {
-        testSlope(data, i, i, mismatch);
+        testSlope(data, i, i, result);
     }*/
 
     // [FAIL] X-major slopes "0" pixels tall (actually, 1 pixel tall)
     // Pixels 0x0 and 255x0 should have zero coverage
     /*for (u32 i = 1; i <= 256; i++) {
-        testSlope(data, i, 0, mismatch);
+        testSlope(data, i, 0, result);
     }*/
 
     // [OK] X-major slopes 1 pixel tall
     /*for (u32 i = 1; i <= 256; i++) {
-        testSlope(data, i, 1, mismatch);
+        testSlope(data, i, 1, result);
     }*/
 
     // [FAIL] X-major slopes 2 pixels tall
     /*for (u32 i = 2; i <= 256; i++) {
-        testSlope(data, i, 2, mismatch);
+        testSlope(data, i, 2, result);
     }*/
 
     // [FAIL] X-major slopes 5 pixels tall
     /*for (u32 i = 5; i <= 256; i++) {
-        testSlope(data, i, 5, mismatch);
+        testSlope(data, i, 5, result);
     }*/
 
     // [OK] Y-major slopes "0" pixels wide (actually, 1 pixel wide)
     /*for (u32 i = 1; i <= 192; i++) {
-        testSlope(data, 0, i, mismatch);
+        testSlope(data, 0, i, result);
     }*/
 
     // [FAIL] Y-major slopes 1 pixel wide
     /*for (u32 i = 1; i <= 192; i++) {
-        testSlope(data, 1, i, mismatch);
+        testSlope(data, 1, i, result);
     }*/
 
     // [FAIL] X-major slopes taller than 1 pixel
-    /*testSlope(data, 9, 3, mismatch);
-    testSlope(data, 10, 3, mismatch);
-    testSlope(data, 100, 60, mismatch);
-    testSlope(data, 155, 63, mismatch);*/
+    /*testSlope(data, 9, 3, result);
+    testSlope(data, 10, 3, result);
+    testSlope(data, 100, 60, result);
+    testSlope(data, 155, 63, result);*/
 
     // [FAIL] Y-major slopes wider than 1 pixel
-    /*testSlope(data, 3, 9, mismatch);
-    testSlope(data, 3, 10, mismatch);
-    testSlope(data, 60, 100, mismatch);
-    testSlope(data, 63, 155, mismatch);*/
+    /*testSlope(data, 3, 9, result);
+    testSlope(data, 3, 10, result);
+    testSlope(data, 60, 100, result);
+    testSlope(data, 63, 155, result);*/
 
-    if (!mismatch) {
+    if (!result.mismatch) {
         std::cout << "OK!\n";
     }
+    std::cout << result.numMatches << " / " << result.testedPixels << " (" << std::fixed << std::setprecision(2)
+              << ((double)result.numMatches / result.testedPixels * 100.0) << "%)\n";
 }
 
 void test(Data &data) {

@@ -315,26 +315,42 @@ public:
             //   - These two values come from the corresponding negative slope at the same exact position within the
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
 
-            /*const i32 recip = kAAFracRange / m_width;
-            const i32 coverageStep = m_height * recip;
-            const i32 coverageBias = coverageStep / 2;
-            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
-            const i32 fracCoverage = xOffset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) & (kAAFracRange - 1);
-            return finalCoverage;*/
+            if (m_width == 0) {
+                // Avoid division by zero
+                return kAAFracRange - 1;
+            }
+
+            // TODO: only works for the first scanline of a slope!
+            // drifts from real values on subsequent scanlines
+            // seems like the offset is recalculated on new scanlines
+            // 161x2 LT edge resets to 0 plus some fraction at 81x1 instead of continuing to 30 30 31 31
+            // 162x2 LT edge resets to 0 plus some fraction at 81x1 instead of continuing to 30 30 31 31
+            // - the latter case is more interesting because the increment pattern is different, which indicates that
+            //   the fraction doesn't match one of our existing entries
+            //     00011222 vs. 00011122  (3-2-3 vs. 3-3-2)
+            // 161x3 has the following initial biases:
+            //   Y=0 -> 9     (X=0..53)          16
+            //   Y=1 -> 15    (X=54..106)        7
+            //   Y=2 -> 3     (X=107..160)       11
+            // const i32 fracStartX = m_negative ? FracXEnd(y) : FracXStart(y);
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 endX = m_negative ? XStart(y) : XEnd(y);
             const i32 deltaX = endX - startX + 1;
             const i32 fullCoverage = ((deltaX * m_height * kAARange) << kAAFracBits) / m_width;
             const i32 coverageStep = fullCoverage / deltaX;
             const i32 coverageBias = coverageStep / 2;
-            const i32 offset = x - startX;
+            // const i32 coverageBias = (fracStartX % kOne) >> (kFracBits - kAAFracBits); // incorrect
+            const i32 offset = m_negative ? m_x0 - x - 1 : x - m_x0;
             const i32 fracCoverage = offset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return finalCoverage;
         } else {
-            // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
             if (m_width != m_height && XStart(y) != XStart(y + 1)) {
+                // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
+                return kAAFracRange - 1;
+            }
+            if (m_width == 0 || m_height == 0) {
+                // Avoid division by zero
                 return kAAFracRange - 1;
             }
             const i32 recip = (kAARange << kFracBits) / m_height;
