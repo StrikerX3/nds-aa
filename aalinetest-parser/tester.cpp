@@ -75,6 +75,111 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     const i32 startY = std::min(ltStartY, rbStartY);
     const i32 endY = std::max(ltEndY, rbEndY);
 
+    /*if (ltSlope.Width() > 0 && ltSlope.IsXMajor()) {
+        const i32 aaStep = ltSlope.Height() * 1024 / ltSlope.Width();
+        std::cout << std::setw(3) << std::right << ltSlope.Width() << 'x' << std::setw(3) << std::left
+                  << ltSlope.Height();
+        std::cout << "  aa step=" << aaStep << '\n';
+        for (i32 y = startY; y < endY; y++) {
+            i32 startX = ltSlope.XStart(y);
+            i32 endX = ltSlope.XEnd(y);
+            i32 incX = ltSlope.IsNegative() ? -1 : +1;
+
+            // All tests draw a triangle with one edge covering the entire span of the screen border given by the test
+            // name. Due to polygon drawing rules and edge precedences, in some cases these pixels will override the
+            // tested slopes with pixels of full coverage, producing false negatives if checked blindly. The following
+            // conditions skip such pixels.
+            if (data.type == TEST_LEFT && startX == 0) {
+                // The Left test draws a vertical line on the left side of the screen which is considered a left edge in
+                // all cases, and thus overrides all pixels at X=0.
+                startX++;
+            }
+            if ((data.type == TEST_TOP || data.type == TEST_BOTTOM) && ltSlope.Height() == 0) {
+                // The Top and bottom tests draw a horizontal line at the top or bottom of the screen. Only the leftmost
+                // pixel of the left edge is valid.
+                if (ltSlope.IsNegative() == ltSlope.IsLeftEdge()) {
+                    startX = endX;
+                } else {
+                    endX = startX;
+                }
+            }
+
+            if (y >= ltStartY && y < ltEndY) {
+                // Determine the valid bias range
+                i32 biasLowerBound = 0;
+                i32 biasUpperBound = 0;
+                i32 baseCoverage = 0;
+                auto &line = data.lines[ltTargetY][ltTargetX];
+
+                auto getPixel = [&](i32 x, i32 y) -> u8 {
+                    u16 pixelIndex = (y << 8) | x;
+                    return line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
+                };
+
+                auto aaCovLower = [&] { return std::min((baseCoverage + biasLowerBound) >> 5, 31); };
+                auto aaCovUpper = [&] { return std::min((baseCoverage + biasUpperBound) >> 5, 31); };
+
+                // Do a forward scan to find the lower bound
+                for (i32 x = startX; ltSlope.IsNegative() ? x >= endX : x <= endX; x += incX) {
+                    while (biasLowerBound < 1024 && aaCovLower() != getPixel(x, y)) {
+                        biasLowerBound++;
+                    }
+                    baseCoverage += aaStep;
+                }
+                baseCoverage -= aaStep;
+
+                // Extend upper bound as far as the last value in the gradient allows
+                biasUpperBound = biasLowerBound;
+                while (biasUpperBound < 1024 && aaCovUpper() == getPixel(endX, y)) {
+                    biasUpperBound++;
+                }
+
+                // Do a backward scan to find the upper bound
+                for (i32 x = endX; ltSlope.IsNegative() ? x <= startX : x >= startX; x -= incX) {
+                    while (biasUpperBound > 0 && aaCovUpper() != getPixel(x, y)) {
+                        biasUpperBound--;
+                    }
+                    baseCoverage -= aaStep;
+                }
+
+                // Calculate using our best known formula so far
+                u32 calcCoverage = (((2 * startX + 1) * ltSlope.Height() * 1024) / (ltSlope.Width() * 2)) & 1023;
+
+                // Display results
+                std::cout << "  " << std::setw(3) << std::right << y << "  ";
+                std::cout << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left << endX
+                          << " -> ";
+                std::cout << std::setw(4) << std::right << calcCoverage;
+                std::cout << "  ";
+                if (calcCoverage >= biasLowerBound && calcCoverage <= biasUpperBound) {
+                    std::cout << "  ";
+                    result.numMatches++;
+                } else {
+                    std::cout << "!=";
+                }
+                result.testedPixels++;
+                std::cout << "  ";
+                if (biasLowerBound >= 1024) {
+                    std::cout << "(unexpected gradient)";
+                } else {
+                    std::cout << std::setw(4) << std::right << biasLowerBound;
+                    if (biasLowerBound != biasUpperBound) {
+                        std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
+                    } else {
+                        std::cout << "      ";
+                    }
+                }
+                std::cout << "  ";
+                for (i32 x = startX; ltSlope.IsNegative() ? x >= endX : x <= endX; x += incX) {
+                    u16 pixelIndex = (y << 8) | x;
+                    u32 pixel = line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
+                    std::cout << " " << std::setw(2) << std::right << pixel;
+                }
+                std::cout << '\n';
+            }
+        }
+    }*/
+
     // Generate slopes and check the coverage values
     for (i32 y = startY; y < endY; y++) {
         auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY) {
@@ -126,16 +231,17 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                           << "   "                                                                             //
                           << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
                           << (slope.IsPositive() ? 'P' : 'N')                                                  //
-                          << (slope.IsXMajor() ? 'X' : 'Y') << '\n';
+                          << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
+                          << '\n';
             }
         };
 
         if (y >= ltStartY && y < ltEndY) {
             calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
         }
-        /*if (y >= rbStartY && y < rbEndY) {
-            calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
-        }*/
+        // if (y >= rbStartY && y < rbEndY) {
+        //    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
+        //}
     }
 }
 

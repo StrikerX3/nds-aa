@@ -357,68 +357,35 @@ public:
             return coverage;
         };
         if (m_xMajor) {
-            // TODO: fix the calculation
-            // Theory 0: the formula does not use the existing X coordinate; instead, it calculates its own offsets
-            // Theory 1: the X-major formula depends on the Y coordinate
-            // - It might be recomputing offsets on every scanline
-            // Theory 2: the formula depends on how long the span is in a given scanline
-            // - VERY obvious on long near-diagonals like 186x185
-            // - For 186x185, doing a perfect floating-point interpolation produces perfect values for every scanline
-            //   that has a span of a single pixel, but breaks precisely on the only scanline that has two pixels
-            //   (106..107x106)
-            // - For 236x185, the same perfect floating-point interpolation also works for every single-pixel scanline,
-            //   but sometimes breaks on scanlines that have two pixels
-            // - The formula seems to be wildly inaccurate/incorrect as it occasionally produces weird discontinuities
-            //   on scanlines with two or more pixels
-            // - Still not sure how to produce the artifact in 186x185
+            // TODO: fix off-by-one errors
+            // - Coverage bias is slightly off in ~2% of the cases
+            // - Handle the artifacts in 186x185 and many others
             //   - The line has two perfect diagonal segments: 0x0 to 106x106, and 107x106 to 185x184
             //   - The calculation produces a gradient that's too short for the first segment, which causes values to
             //     wrap around to 31 before the segment ends (starting at 93x93)
             //   - The gradient goes ..., 30, 30, 30, 29, >2, 31<, 29, 29, 28, ... at the transition between segments
             //     (excerpt from 102x102 to 110x109)
-            //   - The values 2 and 31 are in the same scanline (106) which contains the transition
+            //   - The values 2 and 31 are in the scanline that contains the transition (106)
             //   - These two values come from the corresponding negative slope at the same exact position within the
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
+            //   - It could also be seen as a miscalculation of the coverage bias
 
             if (m_width == 0) {
                 // Avoid division by zero
                 return kAAFracRange - 1;
             }
 
-            // TODO: rework formula to work nicely with right edges
-            // - the gradient is basically the same, but it starts from the right side of the screen
+            // TODO: rework formula to work nicely with negative and inverted edges
+            // - they all use the same exact gradient, except flipped horizontally and/or inverted
             // - extend the logic to the entire slope as well
             //   - potentially gets rid of the bit tricks to make a "ceiling" function in FracXEnd
             //   - potentially eliminates a lot of if conditions
 
-            // TODO: only works for the first scanline of a slope!
-            // drifts from real values on subsequent scanlines
-            // seems like the offset is recalculated on new scanlines
-            // 161x2 LT edge resets to 0 plus some fraction at 81x1 instead of continuing to 30 30 31 31
-            // 162x2 LT edge resets to 0 plus some fraction at 81x1 instead of continuing to 30 30 31 31
-            // - the latter case is more interesting because the increment pattern is different, which indicates that
-            //   the fraction doesn't match one of our existing entries
-            //     00011222 vs. 00011122  (3-2-3 vs. 3-3-2)
-            // 161x2 has the following initial biases:
-            //   Y=0 -> 4..7 (6)   (X=0..80)
-            //   Y=1 -> 12..15     (X=81..160)
-            // 161x3 has the following initial biases:
-            //   Y=0 -> 9     (X=0..53)
-            //   Y=1 -> 15    (X=54..106)
-            //   Y=2 -> 3     (X=107..160)
-            //
-            // Plan: figure out the coverageBias per scanline as described above
-            //
-            // const i32 fracStartX = m_negative ? FracXEnd(y) : FracXStart(y);
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
-            const i32 endX = m_negative ? XStart(y) : XEnd(y);
-            const i32 deltaX = endX - startX + 1;
-            const i32 fullCoverage = ((deltaX * m_height * kAARange) << kAAFracBits) / m_width;
-            const i32 coverageStep = fullCoverage / deltaX;
-            const i32 coverageBias = coverageStep / 2;
-            // const i32 coverageBias = (fracStartX % kOne) >> (kFracBits - kAAFracBits); // incorrect
-            const i32 offset = m_negative ? m_x0 - x - 1 : x - m_x0; // probably should be relative to startX
-            const i32 fracCoverage = offset * coverageStep;
+            const i32 xOffset = m_negative ? startX - x - 1 : x - startX;
+            const i32 coverageStep = (m_height * kAAFracRange) / m_width;
+            const i32 coverageBias = ((2 * startX + 1) * m_height * kAAFracRange) / (2 * m_width);
+            const i32 fracCoverage = xOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return invertGradient(finalCoverage);
         } else {
@@ -430,11 +397,11 @@ public:
                 // Avoid division by zero
                 return kAAFracRange - 1;
             }
+            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
+            const i32 yOffset = y - m_y0;
             const i32 recip = (kAARange << kFracBits) / m_height;
             const i32 coverageStep = m_width * recip;
             const i32 coverageBias = coverageStep / 2;
-            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
-            const i32 yOffset = y - m_y0;
             const i32 fracCoverage = yOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
             return invertGradient(finalCoverage >> (kFracBits - kAAFracBits));
