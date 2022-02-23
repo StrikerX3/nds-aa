@@ -197,6 +197,10 @@ public:
         return result;
     }
 
+    constexpr i32 X0() const {
+        return m_x0;
+    }
+
     /// <summary>
     /// Computes the starting position of the span at the specified Y coordinate as a screen coordinate (dropping the
     /// fractional part).
@@ -381,10 +385,11 @@ public:
             //   - potentially gets rid of the bit tricks to make a "ceiling" function in FracXEnd
             //   - potentially eliminates a lot of if conditions
 
+            const i32 left = m_negative ? m_x0 - m_width : m_x0;
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 xOffset = m_negative ? startX - x - 1 : x - startX;
             const i32 coverageStep = (m_height * kAAFracRange) / m_width;
-            const i32 coverageBias = ((2 * startX + 1) * m_height * kAAFracRange) / (2 * m_width);
+            const i32 coverageBias = ((2 * (startX - left) + 1) * m_height * kAAFracRange) / (2 * m_width);
             const i32 fracCoverage = xOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return invertGradient(finalCoverage);
