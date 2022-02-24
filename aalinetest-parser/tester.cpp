@@ -115,8 +115,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 auto &line = data.lines[targetY][targetX];
 
                 auto getPixel = [&](i32 x, i32 y) -> u8 {
-                    u16 pixelIndex = (y << 8) | x;
-                    u8 pixel = line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
+                    u8 pixel = line.Pixel(x, y);
                     return pixel;
                 };
 
@@ -180,20 +179,18 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 }
                 std::cout << "  ";
                 for (i32 x = startX; slope.IsNegative() ? x >= endX : x <= endX; x += incX) {
-                    u16 pixelIndex = (y << 8) | x;
-                    u32 pixel = line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
-                    std::cout << " " << std::setw(2) << std::right << pixel;
+                    std::cout << " " << std::setw(2) << std::right << (u32)getPixel(x, y);
                 }
                 std::cout << '\n';
             }
         };
 
-        // if (y >= ltStartY && y < ltEndY) {
-        //     calcGradient(ltSlope, ltTargetX, ltTargetY);
-        // }
-        if (y >= rbStartY && y < rbEndY) {
-            calcGradient(rbSlope, rbTargetX, rbTargetY);
+        if (y >= ltStartY && y < ltEndY) {
+            calcGradient(ltSlope, ltTargetX, ltTargetY);
         }
+        // if (y >= rbStartY && y < rbEndY) {
+        //     calcGradient(rbSlope, rbTargetX, rbTargetY);
+        // }
     }*/
 
     // Generate slopes and check the coverage values
@@ -228,18 +225,17 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
 
                 // Compare against data captured from hardware
                 auto &line = data.lines[testY][testX];
-                u16 pixelIndex = (y << 8) | x;
-                u8 pixel = line.pixels.contains(pixelIndex) ? line.pixels.at(pixelIndex) : 0;
+                u8 pixel = line.Pixel(x, y);
                 result.testedPixels++;
                 if (coverage == pixel) {
                     result.numMatches++;
                 } else {
                     foundMismatch();
                 }
-                /*std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
+                std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
                           << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                           << "  " << slopeName << ": "                                                         //
-                          << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ")
+                          << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
                           << std::setw(2) << (u32)pixel                                                        //
                           << "  (" << std::setw(4) << fracCoverage << "  "                                     //
                           << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << '.' << std::setw(2) //
@@ -248,16 +244,16 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                           << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
                           << (slope.IsPositive() ? 'P' : 'N')                                                  //
                           << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
-                          << '\n';*/
+                          << '\n';
             }
         };
 
-        // if (y >= ltStartY && y < ltEndY) {
-        //     calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
-        // }
-        if (y >= rbStartY && y < rbEndY) {
-            calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
+        if (y >= ltStartY && y < ltEndY) {
+            calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
         }
+        // if (y >= rbStartY && y < rbEndY) {
+        //     calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
+        // }
     }
 }
 
@@ -265,14 +261,29 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     std::cout << "Testing " << name << " slopes... ";
 
     TestResult result{};
-    for (i32 y = data.minY; y <= data.maxY; y++) {
-        for (i32 x = data.minX; x <= data.maxX; x++) {
+    for (i32 y = 0; y <= 10; y++) {
+        for (i32 x = 0; x <= 10; x++) {
             testSlope(data, x, y, result);
         }
     }
+    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+        for (i32 x = data.minX; x <= data.maxX; x++) {
+            testSlope(data, x, y, result);
+        }
+    }*/
+    /*for (i32 x = 0; x <= 10; x++) {
+        testSlope(data, x, 2, result);
+    }
+    for (i32 y = 0; y <= 10; y++) {
+        testSlope(data, 2, y, result);
+    }*/
+    /*for (i32 i = 1; i <= 192; i++) {
+        testSlope(data, i, i, result);
+    }*/
     // testSlope(data, 128, 96, result);
     // testSlope(data, 96, 128, result);
     // testSlope(data, 51, 1, result);
+    // testSlope(data, 54, 2, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
@@ -292,6 +303,7 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 6, 6, result);
     // testSlope(data, 84, 4, result);
     // testSlope(data, 186, 185, result);
+    // testSlope(data, 200, 185, result);
     // testSlope(data, 185, 186, result);
     // testSlope(data, 54, 2, result);
 

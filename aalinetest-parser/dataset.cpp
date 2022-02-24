@@ -121,11 +121,10 @@ void extractDataSet(std::filesystem::path root) {
                 const i32 w = slope.Width();
                 const i32 h = slope.Height();
                 out.Size(w, h);
-                auto &pixels = data.lines[y][x].pixels;
+                auto &line = data.lines[y][x];
                 for (i32 xx = startX; xx <= endX; xx++) {
-                    u16 index = (yy << 8) | xx;
-                    if (pixels.contains(index)) {
-                        u8 pixel = pixels.at(index);
+                    if (line.ContainsY(yy)) {
+                        u8 pixel = line.Pixel(xx, yy);
                         // Contents:
                         // - input: width,height; x,y coordinates
                         // - output: expected coverage value at x,y (including zeros)

@@ -11,7 +11,11 @@
 template <typename T>
 inline std::vector<T> LoadBin(const std::filesystem::path &path) {
     std::basic_ifstream<T> file{path, std::ios::binary};
-    return {std::istreambuf_iterator<T>{file}, {}};
+    auto size = std::filesystem::file_size(path);
+    std::vector<T> data;
+    data.resize(size);
+    file.read((char *)data.data(), size);
+    return data;
 }
 
 struct membuf : std::streambuf {
@@ -53,6 +57,7 @@ inline std::unique_ptr<Data> readFile(std::filesystem::path path) {
         int startY = (pData->type != TEST_BOTTOM) ? 0 : std::min(prevY, 191);
         int endY = (pData->type != TEST_TOP) ? 191 : std::min(prevY, 191);
         for (int checkY = startY; checkY <= endY; checkY++) {
+            std::array<u8, 256> spanData;
             for (;;) {
                 u16 x;
                 u8 y;
@@ -61,12 +66,15 @@ inline std::unique_ptr<Data> readFile(std::filesystem::path path) {
                 if (x == 0xFFFF && y == 0xFF) {
                     break;
                 }
+
+                size_t length = 0;
                 char entry;
                 in.read(&entry, 1);
                 while ((uint8_t)entry != 0xFF) {
-                    lines[prevY][prevX].pixels[(y << 8) | (x++)] = entry;
+                    spanData[length++] = entry;
                     in.read(&entry, 1);
                 }
+                lines[prevY][prevX].Add(x, y, std::span(spanData.begin(), length));
             }
         }
     };
