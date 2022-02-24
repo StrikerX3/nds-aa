@@ -342,19 +342,23 @@ public:
             // PN = m_negative (false = P, true = N)
             // XY = m_xMajor   (false = Y, true = X)
             //
-            // Gradients that need to be inverted: LPY LNX RPX RNY
-            //   L P N    R P N
-            //   Y #      Y   #
-            //   X   #    X #
+            // inverse: RPX LNX LPY RNY
+            // normal:  RPY LNY LPX RNX
             //
-            // XY != PN and XY == PN truth tables:
-            //   != PN    == PN
-            //   XY Y X   XY Y X
-            //    Y - +    Y + -
-            //    X + -    X - +
-            // Any of these match our requirements:
-            //   LR == (XY == PN)
-            //   LR != (XY != PN)
+            // LR PN XY code rev PN^XY LR^(PN^XY) PN==XY LR==(PN==XY)
+            // -  -  -  RPY   -    -       -        +         -
+            // -  -  +  RPX   +    +       +        -         +
+            // -  +  -  RNY   +    +       +        -         +
+            // -  +  +  RNX   -    -       -        +         -
+            // +  -  -  LPY   +    -       +        +         +
+            // +  -  +  LPX   -    +       -        -         -
+            // +  +  -  LNY   -    +       -        -         -
+            // +  +  +  LNX   +    -       +        +         +
+            //
+            // Any of these matches our requirements:
+            //   LR ^ (PN ^ XY)
+            //   LR != (PN != XY)
+            //   LR == (PN == XY)
             if (m_leftEdge == (m_negative == m_xMajor)) {
                 coverage ^= kAAFracRange - 1;
             }
