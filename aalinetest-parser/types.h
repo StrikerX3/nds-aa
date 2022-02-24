@@ -21,18 +21,18 @@ using i32 = int32_t;
 struct Line {
     struct Span {
         size_t vecOffset;
-        u8 length;
-        u8 x0;
+        u16 length;
+        u16 x0;
     };
     std::vector<u8> data;
     std::unordered_map<u8, std::vector<Span>> spans; // key is Y
 
-    void Add(u8 x, u8 y, std::span<u8> values) {
-        spans[y].push_back({.vecOffset = spans.size(), .length = (u8)(values.size() - 1), .x0 = x});
+    void Add(u16 x, u8 y, std::span<u8> values) {
+        spans[y].push_back({.vecOffset = data.size(), .length = (u16)values.size(), .x0 = x});
         std::copy(values.begin(), values.end(), std::back_inserter(data));
     }
 
-    u8 Pixel(u8 x, u8 y) const {
+    u8 Pixel(u16 x, u8 y) const {
         if (!spans.contains(y)) {
             return 0;
         }
@@ -42,12 +42,11 @@ struct Line {
                 continue;
             }
 
-            x -= span.x0;
-            if (x > span.length) {
+            if ((size_t)x - span.x0 >= (size_t)span.length) {
                 continue;
             }
 
-            return data[span.vecOffset + x];
+            return data[span.vecOffset + x - span.x0];
         }
         return 0;
     }
