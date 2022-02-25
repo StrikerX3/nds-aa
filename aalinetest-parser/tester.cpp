@@ -72,18 +72,211 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     adjustY(ltStartY, ltEndY);
     adjustY(rbStartY, rbEndY);
 
-    const i32 startY = std::min(ltStartY, rbStartY);
-    const i32 endY = std::max(ltEndY, rbEndY);
+    // Dump gradients from the data set
+    auto dumpGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
+        // Avoid division by zero.
+        // Also, we're not interested in perfectly vertical or horizontal edges; those are solved already.
+        if (slope.Width() == 0 || slope.Height() == 0) {
+            return;
+        }
 
-    // Generate gradients using the new bias method
-    /*for (i32 y = startY; y < endY; y++) {
-        auto calcGradient = [&](Slope &slope, i32 targetX, i32 targetY) {
-            if (slope.Width() > 0 && slope.IsXMajor()) {
-                const i32 gradFlip = (slope.IsLeftEdge() == (slope.IsNegative() == slope.IsXMajor())) ? 31 : 0;
-                const i32 aaStep = slope.Height() * 1024 / slope.Width();
-                std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left
-                          << slope.Height();
-                std::cout << "  aa step=" << aaStep << '\n';
+        const i32 gradFlip = (slope.IsLeftEdge() == (slope.IsNegative() == slope.IsXMajor())) ? 31 : 0;
+        const i32 aaStep = slope.IsXMajor() //
+                               ? slope.Height() * 1024 / slope.Width()
+                               : slope.Width() * 1024 / slope.Height();
+
+        std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left << slope.Height();
+        std::cout << "  aa step=" << aaStep;
+        std::cout << "   "                            //
+                  << (slope.IsLeftEdge() ? 'L' : 'R') //
+                  << (slope.IsPositive() ? 'P' : 'N') //
+                  << (slope.IsXMajor() ? 'X' : 'Y')   //
+                  << '\n';
+
+        if (slope.IsXMajor()) {
+            for (i32 y = startY; y < endY; y++) {
+                i32 startX = slope.XStart(y);
+                i32 endX = slope.XEnd(y);
+                bool flipped = (startX > endX);
+                if (flipped) {
+                    std::swap(startX, endX);
+                }
+
+                // All tests draw a triangle with one edge covering the entire span of the screen border given by the
+                // test name. Due to polygon drawing rules and edge precedences, in some cases these pixels will
+                // override the tested slopes with pixels of full coverage, producing false negatives if checked
+                // blindly. The following conditions skip such pixels.
+                if (data.type == TEST_LEFT && startX == 0) {
+                    // The Left test draws a vertical line on the left side of the screen which is considered a left
+                    // edge in all cases, and thus overrides all pixels at X=0.
+                    startX++;
+                }
+
+                // Determine the valid bias range
+                i32 biasLowerBound = 0;
+                i32 biasUpperBound = 0;
+                i32 baseCoverage = 0;
+                auto &line = data.lines[targetY][targetX];
+
+                auto aaCovLower = [&] {
+                    return std::min((baseCoverage + biasLowerBound) >> 5, 31) ^ gradFlip ^ (flipped * 31);
+                };
+                auto aaCovUpper = [&] {
+                    return std::min((baseCoverage + biasUpperBound) >> 5, 31) ^ gradFlip ^ (flipped * 31);
+                };
+
+                // Do a forward scan to find the lower bound
+                for (i32 x = startX; x <= endX; x++) {
+                    while (biasLowerBound < 1024 && aaCovLower() != line.Pixel(x, y)) {
+                        biasLowerBound++;
+                    }
+                    baseCoverage += aaStep;
+                }
+                baseCoverage -= aaStep;
+
+                // Extend upper bound as far as the last value in the gradient allows
+                biasUpperBound = biasLowerBound;
+                while (biasUpperBound < 1024 && aaCovUpper() == line.Pixel(endX, y)) {
+                    biasUpperBound++;
+                }
+
+                // Do a backward scan to find the upper bound
+                for (i32 x = endX; x >= startX; x--) {
+                    while (biasUpperBound > 0 && aaCovUpper() != line.Pixel(x, y)) {
+                        biasUpperBound--;
+                    }
+                    baseCoverage -= aaStep;
+                }
+
+                // Display gradient
+                std::cout << "    y=" << std::setw(3) << std::left << y << "  ";
+                std::cout << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left << endX
+                          << " -> ";
+                if (biasLowerBound >= 1024) {
+                    std::cout << "(unexpected gradient)";
+                } else {
+                    std::cout << std::setw(4) << std::right << biasLowerBound;
+                    if (biasLowerBound != biasUpperBound) {
+                        std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
+                    } else {
+                        std::cout << "      ";
+                    }
+                }
+                std::cout << "  ";
+                for (i32 x = startX; x <= endX; x++) {
+                    std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
+                }
+                std::cout << '\n';
+            }
+        } else { // Y-major or diagonal
+            i32 lastX = -1;
+            i32 topY = -1;
+            for (i32 y = startY; y < endY; y++) {
+                i32 x = slope.XStart(y);
+
+                // All tests draw a triangle with one edge covering the entire span of the screen border given by the
+                // test name. Due to polygon drawing rules and edge precedences, in some cases these pixels will
+                // override the tested slopes with pixels of full coverage, producing false negatives if checked
+                // blindly. The following conditions skip such pixels.
+                if (data.type == TEST_LEFT && x == 0) {
+                    // The Left test draws a vertical line on the left side of the screen which is considered a left
+                    // edge in all cases, and thus overrides all pixels at X=0.
+                    continue;
+                }
+
+                // We want to process individual vertical segments of the slope in one go.
+                // We know we've reached the end of a segment when the X coordinate changes or we're at the last Y.
+                if (x == lastX && y < endY - 1) {
+                    continue;
+                }
+
+                if (lastX == -1) {
+                    // First pixel of the slope; initialize parameters
+                    lastX = x;
+                    topY = y;
+                    continue;
+                }
+
+                // X changed or we reached the bottom of the slope, so process the current segment
+                const i32 xx = lastX;
+                const i32 btmY = (y == endY - 1) ? y : std::max(topY, y - 1);
+
+                // Determine the valid bias range
+                i32 biasLowerBound = 0;
+                i32 biasUpperBound = 0;
+                i32 baseCoverage = 0;
+                auto &line = data.lines[targetY][targetX];
+
+                // TODO: handle the forced full alpha pixel on the end of every segment
+                // TODO: handle reverse gradients
+                auto aaCovLower = [&] { return std::min((baseCoverage + biasLowerBound) >> 5, 31) ^ gradFlip; };
+                auto aaCovUpper = [&] { return std::min((baseCoverage + biasUpperBound) >> 5, 31) ^ gradFlip; };
+
+                // Do a forward scan to find the lower bound
+                for (i32 yy = topY; yy <= btmY; yy++) {
+                    while (biasLowerBound < 1024 && aaCovLower() != line.Pixel(xx, yy)) {
+                        biasLowerBound++;
+                    }
+                    baseCoverage += aaStep;
+                }
+                baseCoverage -= aaStep;
+
+                // Extend upper bound as far as the last value in the gradient allows
+                biasUpperBound = biasLowerBound;
+                while (biasUpperBound < 1024 && aaCovUpper() == line.Pixel(xx, btmY)) {
+                    biasUpperBound++;
+                }
+
+                // Do a backward scan to find the upper bound
+                for (i32 yy = btmY; yy >= topY; yy--) {
+                    while (biasUpperBound > 0 && aaCovUpper() != line.Pixel(xx, yy)) {
+                        biasUpperBound--;
+                    }
+                    baseCoverage -= aaStep;
+                }
+
+                // Display gradient
+                std::cout << "    x=" << std::setw(3) << std::left << xx << "  ";
+                std::cout << std::setw(3) << std::right << topY << ".." << std::setw(3) << std::left << btmY << " -> ";
+                if (biasLowerBound >= 1024) {
+                    std::cout << "(unexpected gradient)";
+                } else {
+                    std::cout << std::setw(4) << std::right << biasLowerBound;
+                    if (biasLowerBound != biasUpperBound) {
+                        std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
+                    } else {
+                        std::cout << "      ";
+                    }
+                }
+                std::cout << "  ";
+                for (i32 yy = topY; yy <= btmY; yy++) {
+                    std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(xx, yy);
+                }
+                std::cout << '\n';
+
+                // Update segment parameters for the next iteration
+                lastX = x;
+                topY = y;
+            }
+        }
+    };
+    dumpGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
+    dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);
+
+    // Generate X-major gradients using the new bias method and compare against the data set
+    /*auto calcGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
+        if (slope.IsXMajor() && slope.Width() > 0) {
+            const i32 gradFlip = (slope.IsLeftEdge() == (slope.IsNegative() == slope.IsXMajor())) ? 31 : 0;
+            const i32 aaStep = slope.Height() * 1024 / slope.Width();
+            std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left
+                      << slope.Height();
+            std::cout << "  aa step=" << aaStep;
+            std::cout << "   "                            //
+                      << (slope.IsLeftEdge() ? 'L' : 'R') //
+                      << (slope.IsPositive() ? 'P' : 'N') //
+                      << (slope.IsXMajor() ? 'X' : 'Y')   //
+                      << '\n';
+            for (i32 y = startY; y < endY; y++) {
                 i32 left = slope.IsNegative() ? slope.X0() - slope.Width() : slope.X0();
                 i32 startX = slope.XStart(y);
                 i32 endX = slope.XEnd(y);
@@ -114,17 +307,12 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 i32 baseCoverage = 0;
                 auto &line = data.lines[targetY][targetX];
 
-                auto getPixel = [&](i32 x, i32 y) -> u8 {
-                    u8 pixel = line.Pixel(x, y);
-                    return pixel;
-                };
-
                 auto aaCovLower = [&] { return std::min((baseCoverage + biasLowerBound) >> 5, 31) ^ gradFlip; };
                 auto aaCovUpper = [&] { return std::min((baseCoverage + biasUpperBound) >> 5, 31) ^ gradFlip; };
 
                 // Do a forward scan to find the lower bound
                 for (i32 x = startX; slope.IsNegative() ? x >= endX : x <= endX; x += incX) {
-                    while (biasLowerBound < 1024 && aaCovLower() != getPixel(x, y)) {
+                    while (biasLowerBound < 1024 && aaCovLower() != line.Pixel(x, y)) {
                         biasLowerBound++;
                     }
                     baseCoverage += aaStep;
@@ -133,13 +321,13 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
 
                 // Extend upper bound as far as the last value in the gradient allows
                 biasUpperBound = biasLowerBound;
-                while (biasUpperBound < 1024 && aaCovUpper() == getPixel(endX, y)) {
+                while (biasUpperBound < 1024 && aaCovUpper() == line.Pixel(endX, y)) {
                     biasUpperBound++;
                 }
 
                 // Do a backward scan to find the upper bound
                 for (i32 x = endX; slope.IsNegative() ? x <= startX : x >= startX; x -= incX) {
-                    while (biasUpperBound > 0 && aaCovUpper() != getPixel(x, y)) {
+                    while (biasUpperBound > 0 && aaCovUpper() != line.Pixel(x, y)) {
                         biasUpperBound--;
                     }
                     baseCoverage -= aaStep;
@@ -179,21 +367,18 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 }
                 std::cout << "  ";
                 for (i32 x = startX; slope.IsNegative() ? x >= endX : x <= endX; x += incX) {
-                    std::cout << " " << std::setw(2) << std::right << (u32)getPixel(x, y);
+                    std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
                 }
                 std::cout << '\n';
             }
-        };
-
-        if (y >= ltStartY && y < ltEndY) {
-            calcGradient(ltSlope, ltTargetX, ltTargetY);
         }
-        // if (y >= rbStartY && y < rbEndY) {
-        //     calcGradient(rbSlope, rbTargetX, rbTargetY);
-        // }
-    }*/
+    };
+    calcGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
+    calcGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);*/
 
     // Generate slopes and check the coverage values
+    /*const i32 startY = std::min(ltStartY, rbStartY);
+    const i32 endY = std::max(ltEndY, rbEndY);
     for (i32 y = startY; y < endY; y++) {
         auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY) {
             i32 startX = slope.XStart(y);
@@ -232,7 +417,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else {
                     foundMismatch();
                 }
-                /*std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
+                std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
                           << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                           << "  " << slopeName << ": "                                                         //
                           << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
@@ -244,28 +429,29 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                           << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
                           << (slope.IsPositive() ? 'P' : 'N')                                                  //
                           << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
-                          << '\n';*/
+                          << '\n';
             }
         };
 
-        // if (y >= ltStartY && y < ltEndY) {
-        //     calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
-        // }
+        if (y >= ltStartY && y < ltEndY) {
+            calcSlope(ltSlope, "LT", ltTargetX, ltTargetY);
+        }
         if (y >= rbStartY && y < rbEndY) {
             calcSlope(rbSlope, "RB", rbTargetX, rbTargetY);
         }
-    }
+    }*/
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     std::cout << "Testing " << name << " slopes... ";
+    std::cout << '\n';
 
     TestResult result{};
-    for (i32 y = data.minY; y <= data.maxY; y++) {
+    /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }
+    }*/
     /*for (i32 y = 0; y <= 10; y++) {
         for (i32 x = 0; x <= 10; x++) {
             testSlope(data, x, y, result);
@@ -284,6 +470,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 96, 128, result);
     // testSlope(data, 51, 1, result);
     // testSlope(data, 54, 2, result);
+    // testSlope(data, 23, 17, result);
+    // testSlope(data, 253, 187, result);
+    // testSlope(data, 253, 188, result);
+    testSlope(data, 100, 3, result);
+    testSlope(data, 3, 100, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
