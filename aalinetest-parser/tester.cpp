@@ -403,8 +403,6 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     calcGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);*/
 
     // Generate slopes and check the coverage values
-    const i32 startY = std::min(ltStartY, rbStartY);
-    const i32 endY = std::max(ltEndY, rbEndY);
     auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY, i32 startY, i32 endY) {
         for (i32 y = startY; y < endY; y++) {
             i32 startX = slope.XStart(y);
@@ -443,7 +441,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else {
                     foundMismatch();
                 }
-                //if (coverage != pixel) {
+                if (coverage != pixel) {
                     std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
                               << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                               << "  " << slopeName << ": "                                                         //
@@ -457,12 +455,12 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                               << (slope.IsPositive() ? 'P' : 'N')                                                  //
                               << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
                               << '\n';
-                //}
+                }
             }
         }
     };
-    calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    //calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
+    //calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
+    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -478,11 +476,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All X-major slopes
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = std::max<i32>(data.minX, y + 1); x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All Y-major slopes (except diagonals)
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
@@ -522,8 +520,8 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 19, 85, result);
     // testSlope(data, 19, 187, result);
     // testSlope(data, 19, 190, result);
-    testSlope(data, 3, 6, result);
-    testSlope(data, 4, 8, result);
+    // testSlope(data, 3*8, 6*8, result);
+    // testSlope(data, 4, 8, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {

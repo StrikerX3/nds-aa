@@ -410,18 +410,6 @@ public:
                 // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
                 return invertGradient(kAAFracRange - 1);
             }
-            /*if (m_width == 0 || m_height == 0) {
-                // Avoid division by zero
-                return kAAFracRange - 1;
-            }
-            const i32 xOffset = m_negative ? m_x0 - x - 1 : x - m_x0;
-            const i32 yOffset = y - m_y0;
-            const i32 recip = (kAARange << kFracBits) / m_height;
-            const i32 coverageStep = m_width * recip;
-            const i32 coverageBias = coverageStep / 2;
-            const i32 fracCoverage = yOffset * coverageStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
-            return invertGradient(finalCoverage >> (kFracBits - kAAFracBits));*/
             if (m_height == 0) {
                 // Avoid division by zero
                 return invertGradient(kAAFracRange - 1);
