@@ -340,24 +340,23 @@ public:
             // PN = m_negative (false = P, true = N)
             // XY = m_xMajor   (false = Y, true = X)
             //
-            // inverse: RPX LNX LPY RNY
-            // normal:  RPY LNY LPX RNX
+            // normal:  RPY LPX LNY LNX
+            // inverse: RPX RNY RNX LPY
             //
-            // LR PN XY code rev PN^XY LR^(PN^XY) PN==XY LR==(PN==XY)
-            // -  -  -  RPY   -    -       -        +         -
-            // -  -  +  RPX   +    +       +        -         +
-            // -  +  -  RNY   +    +       +        -         +
-            // -  +  +  RNX   -    -       -        +         -
-            // +  -  -  LPY   +    -       +        +         +
-            // +  -  +  LPX   -    +       -        -         -
-            // +  +  -  LNY   -    +       -        -         -
-            // +  +  +  LNX   +    -       +        +         +
+            // LR PN XY code rev PN|XY LR^(PN|XY) LR!=(PN|XY)
+            // -  -  -  RPY   -    -       -           -
+            // -  -  +  RPX   +    +       +           +
+            // -  +  -  RNY   +    +       +           +
+            // -  +  +  RNX   +    +       +           +
+            // +  -  -  LPY   +    -       +           +
+            // +  -  +  LPX   -    +       -           -
+            // +  +  -  LNY   -    +       -           -
+            // +  +  +  LNX   -    +       -           -
             //
             // Any of these matches our requirements:
-            //   LR ^ (PN ^ XY)
-            //   LR != (PN != XY)
-            //   LR == (PN == XY)
-            if (m_leftEdge == (m_negative == m_xMajor)) {
+            //   LR ^ (PN | XY)
+            //   LR != (PN || XY)
+            if (m_leftEdge != (m_negative || m_xMajor)) {
                 coverage ^= kAAFracRange - 1;
             }
             return coverage;
@@ -390,9 +389,9 @@ public:
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
             //   - It could also be seen as a miscalculation of the coverage bias
 
-            const i32 startX = XStart(y);
-            const i32 xOffsetOrigin = m_negative ? m_x0 - startX - 1 : startX - m_x0;
-            const i32 xOffsetSegment = m_negative ? startX - x : x - startX;
+            const i32 startX = m_negative ? XEnd(y) : XStart(y);
+            const i32 xOffsetOrigin = m_negative ? startX - (m_x0 - m_width) : startX - m_x0;
+            const i32 xOffsetSegment = x - startX;
             const i32 coverageStep = m_height * kAAFracRange / m_width;
             const i32 coverageBias = ((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width);
             const i32 fracCoverage = xOffsetSegment * coverageStep;

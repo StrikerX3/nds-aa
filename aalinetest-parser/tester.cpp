@@ -468,6 +468,7 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     std::cout << '\n';
 
     TestResult result{};
+
     // All slopes
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
@@ -523,6 +524,8 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 3*8, 6*8, result);
     // testSlope(data, 4, 8, result);
     // testSlope(data, 5, 3, result);
+    //testSlope(data, 10, 101, result);
+    //testSlope(data, 101, 10, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
