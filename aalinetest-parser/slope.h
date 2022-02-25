@@ -369,7 +369,7 @@ public:
         }
         if (m_width == 0 || m_height == 0) {
             // Perfect horizontals and verticals have full alpha
-            return kAAFracRange - 1;
+            return invertGradient(0);
         }
         if (m_width == m_height) {
             // Perfect diagonals always have half alpha
