@@ -322,8 +322,7 @@ public:
         // - AA coverage calculation uses different variables depending on whether the slope is X-major or not
         //   - The formula is consistent across all slope types
         // - Perfectly horizontal or vertical edges (DX or DY == 0) are drawn in full alpha
-        // - Perfectly diagonal edges (DX == DY) are drawn in half alpha (16)
-        //   - Note that this is actually taken into account by the Y-major formula and is not a special case
+        // - Perfectly diagonal edges (DX == DY) are drawn in half alpha (15, or 16 if gradient is inverted)
         // - Gradients may be positive or negative
         //   - Positive gradient: AA coverage increases as X or Y increases
         //   - Negative gradient: AA coverage decreases as X or Y increases
@@ -332,7 +331,6 @@ public:
         //   - Left negative Y-major
         //   - Right positive Y-major
         // - Negative gradients are calculated by inverting the output of the corresponding positive gradient
-        //   - This can be achieved by XORing the positive gradient output by 31
         // - The last pixel of every vertical subspan of Y-major edges has fixed coverage depending on the gradient:
         //   - Positive gradient: full coverage
         //   - Negative gradient: zero coverage
@@ -364,6 +362,20 @@ public:
             }
             return coverage;
         };
+
+        if (m_width == 0 && m_height == 0) {
+            // Zero by zero produces no output
+            return 0;
+        }
+        if (m_width == 0 || m_height == 0) {
+            // Perfect horizontals and verticals have full alpha
+            return kAAFracRange - 1;
+        }
+        if (m_width == m_height) {
+            // Perfect diagonals always have half alpha
+            return invertGradient((kAAFracRange >> 1) - 1);
+        }
+
         if (m_xMajor) {
             // TODO: fix off-by-one errors
             // - Coverage bias is slightly off in ~2% of the cases
@@ -378,40 +390,17 @@ public:
             //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
             //   - It could also be seen as a miscalculation of the coverage bias
 
-            if (m_width == 0) {
-                // Avoid division by zero
-                return kAAFracRange - 1;
-            }
-
-            // TODO: rework formula to work nicely with negative and inverted edges
-            // - they all use the same exact gradient, except flipped horizontally and/or inverted
-            // - extend the logic to the entire slope as well
-            //   - potentially gets rid of the bit tricks to make a "ceiling" function in FracXEnd
-            //   - potentially eliminates a lot of if conditions
-
-            const i32 left = m_negative ? m_x0 - m_width : m_x0;
-            const i32 startX = m_negative ? XEnd(y) : XStart(y);
-            const i32 xOffset = m_negative ? startX - x - 1 : x - startX;
+            const i32 startX = XStart(y);
+            const i32 xOffsetOrigin = m_negative ? m_x0 - startX - 1 : startX - m_x0;
+            const i32 xOffsetSegment = m_negative ? startX - x : x - startX;
             const i32 coverageStep = m_height * kAAFracRange / m_width;
-            const i32 coverageBias = ((2 * (startX - left) + 1) * m_height * kAAFracRange) / (2 * m_width);
-            const i32 fracCoverage = xOffset * coverageStep;
+            const i32 coverageBias = ((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width);
+            const i32 fracCoverage = xOffsetSegment * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return invertGradient(finalCoverage);
         } else {
-            if (m_width == 0 && m_height == 0) {
-                // Zero by zero produces no output
-                return 0;
-            }
-            if (m_width == m_height) {
-                // Perfect diagonals always have half alpha
-                return invertGradient((kAAFracRange >> 1) - 1);
-            }
             if (XStart(y) != XStart(y + 1)) {
-                // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
-                return invertGradient(kAAFracRange - 1);
-            }
-            if (m_height == 0) {
-                // Avoid division by zero
+                // Last pixel of a vertical slice seems to be forced to maximum coverage
                 return invertGradient(kAAFracRange - 1);
             }
             const i32 fxs = (m_negative ? kOne - FracXEnd(y) : FracXStart(y)) % kOne;
