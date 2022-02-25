@@ -127,6 +127,11 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
 
                 // Do a forward scan to find the lower bound
                 for (i32 x = startX; x <= endX; x++) {
+                    // Ignore the leftmost pixel of 256-wide right slopes because they make it impossible to find a
+                    // valid bias for a gradient
+                    if (slope.Width() == 256 && slope.IsRightEdge() && x == 0) {
+                        continue;
+                    }
                     while (biasLowerBound < 1024 && aaCovLower() != line.Pixel(x, y)) {
                         biasLowerBound++;
                     }
@@ -142,6 +147,11 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
 
                 // Do a backward scan to find the upper bound
                 for (i32 x = endX; x >= startX; x--) {
+                    // Ignore the leftmost pixel of 256-wide right slopes because they make it impossible to find a
+                    // valid bias for a gradient
+                    if (slope.Width() == 256 && slope.IsRightEdge() && x == 0) {
+                        continue;
+                    }
                     while (biasUpperBound > 0 && aaCovUpper() != line.Pixel(x, y)) {
                         biasUpperBound--;
                     }
@@ -214,6 +224,11 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
 
                 // Do a forward scan to find the lower bound
                 for (i32 yy = topY; yy <= btmY; yy++) {
+                    // Ignore the bottommost pixel of every slice since they have a fixed value that confuses the
+                    // gradient finder algorithm
+                    if (yy == btmY && btmY < endY - 1) {
+                        continue;
+                    }
                     while (biasLowerBound < 1024 && aaCovLower() != line.Pixel(xx, yy)) {
                         biasLowerBound++;
                     }
@@ -223,12 +238,25 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
 
                 // Extend upper bound as far as the last value in the gradient allows
                 biasUpperBound = biasLowerBound;
-                while (biasUpperBound < 1024 && aaCovUpper() == line.Pixel(xx, btmY)) {
-                    biasUpperBound++;
+                i32 checkY = btmY;
+                if (btmY < endY - 1) {
+                    // Ignore the bottommost pixel of every slice since they have a fixed value that confuses the
+                    // gradient finder algorithm
+                    checkY--;
+                }
+                if (checkY >= topY) {
+                    while (biasUpperBound < 1024 && aaCovUpper() == line.Pixel(xx, checkY)) {
+                        biasUpperBound++;
+                    }
                 }
 
                 // Do a backward scan to find the upper bound
                 for (i32 yy = btmY; yy >= topY; yy--) {
+                    // Ignore the bottommost pixel of every slice since they have a fixed value that confuses the
+                    // gradient finder algorithm
+                    if (yy == btmY && btmY < endY - 1) {
+                        continue;
+                    }
                     while (biasUpperBound > 0 && aaCovUpper() != line.Pixel(xx, yy)) {
                         biasUpperBound--;
                     }
@@ -447,11 +475,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     std::cout << '\n';
 
     TestResult result{};
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
     /*for (i32 y = 0; y <= 10; y++) {
         for (i32 x = 0; x <= 10; x++) {
             testSlope(data, x, y, result);
@@ -473,8 +501,9 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 23, 17, result);
     // testSlope(data, 253, 187, result);
     // testSlope(data, 253, 188, result);
-    testSlope(data, 100, 3, result);
-    testSlope(data, 3, 100, result);
+    // testSlope(data, 178, 3, result);
+    // testSlope(data, 3, 178, result);
+    // testSlope(data, 19, 187, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
