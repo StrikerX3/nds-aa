@@ -217,8 +217,6 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 i32 baseCoverage = 0;
                 auto &line = data.lines[targetY][targetX];
 
-                // TODO: handle the forced full alpha pixel on the end of every segment
-                // TODO: handle reverse gradients
                 auto aaCovLower = [&] { return std::min((baseCoverage + biasLowerBound) >> 5, 31) ^ gradFlip; };
                 auto aaCovUpper = [&] { return std::min((baseCoverage + biasUpperBound) >> 5, 31) ^ gradFlip; };
 
