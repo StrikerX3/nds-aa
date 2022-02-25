@@ -398,11 +398,19 @@ public:
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return invertGradient(finalCoverage);
         } else {
-            if (m_width != m_height && XStart(y) != XStart(y + 1)) {
+            if (m_width == 0 && m_height == 0) {
+                // Zero by zero produces no output
+                return 0;
+            }
+            if (m_width == m_height) {
+                // Perfect diagonals always have half alpha
+                return invertGradient((kAAFracRange >> 1) - 1);
+            }
+            if (XStart(y) != XStart(y + 1)) {
                 // Last pixel of a vertical slice seems to be forced to maximum coverage, except for perfect diagonals
                 return invertGradient(kAAFracRange - 1);
             }
-            if (m_width == 0 || m_height == 0) {
+            /*if (m_width == 0 || m_height == 0) {
                 // Avoid division by zero
                 return kAAFracRange - 1;
             }
@@ -413,7 +421,16 @@ public:
             const i32 coverageBias = coverageStep / 2;
             const i32 fracCoverage = yOffset * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) - xOffset * (kAARange << kFracBits);
-            return invertGradient(finalCoverage >> (kFracBits - kAAFracBits));
+            return invertGradient(finalCoverage >> (kFracBits - kAAFracBits));*/
+            if (m_height == 0) {
+                // Avoid division by zero
+                return invertGradient(kAAFracRange - 1);
+            }
+            const i32 fxs = (m_negative ? kOne - FracXEnd(y) : FracXStart(y)) % kOne;
+            const i32 baseCoverage = (fxs & kMask) >> 8;
+            const i32 coverageStep = m_width * kAAFracRange / m_height;
+            const i32 coverageBias = coverageStep / 2;
+            return invertGradient(baseCoverage + coverageBias);
         }
     }
 
