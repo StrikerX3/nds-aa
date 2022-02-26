@@ -448,7 +448,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else if (coverage < pixel) {
                     result.undershoot += pixel - coverage;
                 }
-                if (coverage != pixel) {
+                //if (coverage != pixel) {
                     std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
                               << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                               << "  " << slopeName << ": "                                                         //
@@ -462,7 +462,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                               << (slope.IsPositive() ? 'P' : 'N')                                                  //
                               << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
                               << '\n';
-                }
+                //}
             }
         }
     };
@@ -491,11 +491,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All Y-major slopes (except diagonals)
-    for (i32 y = data.minY; y <= data.maxY; y++) {
+    /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= std::min<i32>(data.maxX, y - 1); x++) {
             testSlope(data, x, y, result);
         }
-    }
+    }*/
 
     // All diagonals
     /*for (i32 i = std::max<i32>(data.minX, data.minY); i <= std::min<i32>(data.maxX, data.maxY); i++) {
@@ -528,7 +528,9 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 19, 85, result);
     // testSlope(data, 19, 187, result);
     // testSlope(data, 19, 190, result);
-    // testSlope(data, 3*8, 6*8, result);
+    testSlope(data, 3, 6, result);
+    testSlope(data, 5, 10, result);
+    // testSlope(data, 3 * 8, 6 * 8, result);
     // testSlope(data, 4, 8, result);
     // testSlope(data, 5, 3, result);
     // testSlope(data, 10, 101, result);

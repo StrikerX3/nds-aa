@@ -403,7 +403,8 @@ public:
                 //  ... except in 1037 cases where it doesn't, like 53x80, 77x80, 53x82, 57x82, ..., 189x192
                 return invertGradient(kAAFracRange - 1);
             }
-            const i32 fxs = (m_negative ? kOne - FracXEnd(y) : FracXStart(y)) % kOne;
+            // There are 1745 off-by-one errors, all of them are -1
+            const i32 fxs = (m_negative ? kOne - FracXStart(y) : FracXStart(y)) % kOne;
             const i32 baseCoverage = (fxs & kMask) >> 8;
             const i32 coverageStep = m_width * kAAFracRange / m_height;
             const i32 coverageBias = coverageStep / 2;
