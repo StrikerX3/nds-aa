@@ -9,6 +9,8 @@ struct TestResult {
     bool mismatch = false;
     u64 numMatches = 0;
     u64 testedPixels = 0;
+    u64 overshoot = 0;
+    u64 undershoot = 0;
 };
 
 void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &result) {
@@ -16,7 +18,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     auto foundMismatch = [&] {
         if (!result.mismatch) {
             result.mismatch = true;
-            std::cout << "found mismatch\n";
+            // std::cout << "found mismatch\n";
         }
     };
 
@@ -441,7 +443,12 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else {
                     foundMismatch();
                 }
-                /*if (coverage != pixel) {
+                if (coverage > pixel) {
+                    result.overshoot += coverage - pixel;
+                } else if (coverage < pixel) {
+                    result.undershoot += pixel - coverage;
+                }
+                if (coverage != pixel) {
                     std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
                               << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                               << "  " << slopeName << ": "                                                         //
@@ -455,12 +462,12 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                               << (slope.IsPositive() ? 'P' : 'N')                                                  //
                               << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
                               << '\n';
-                }*/
+                }
             }
         }
     };
     calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
+    // calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -524,8 +531,14 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 3*8, 6*8, result);
     // testSlope(data, 4, 8, result);
     // testSlope(data, 5, 3, result);
-    //testSlope(data, 10, 101, result);
-    //testSlope(data, 101, 10, result);
+    // testSlope(data, 10, 101, result);
+    // testSlope(data, 101, 10, result);
+    // testSlope(data, 53, 80, result);
+    // testSlope(data, 77, 80, result);
+    // testSlope(data, 69, 95, result);
+    // testSlope(data, 94, 99, result);
+    // testSlope(data, 189, 192, result);
+    // testSlope(data, 8, 16, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {
@@ -626,6 +639,8 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }
     std::cout << "## Accuracy: " << result.numMatches << " / " << result.testedPixels << " (" << std::fixed
               << std::setprecision(2) << ((double)result.numMatches / result.testedPixels * 100.0) << "%)\n";
+    std::cout << "overshoot: " << result.overshoot << "\n";
+    std::cout << "undershoot: " << result.undershoot << "\n";
 }
 
 void test(Data &data) {

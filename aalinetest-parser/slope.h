@@ -400,6 +400,7 @@ public:
         } else {
             if (XStart(y) != XStart(y + 1)) {
                 // Last pixel of a vertical slice seems to be forced to maximum coverage
+                //  ... except in 1037 cases where it doesn't, like 53x80, 77x80, 53x82, 57x82, ..., 189x192
                 return invertGradient(kAAFracRange - 1);
             }
             const i32 fxs = (m_negative ? kOne - FracXEnd(y) : FracXStart(y)) % kOne;
