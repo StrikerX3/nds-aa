@@ -448,26 +448,26 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else if (coverage < pixel) {
                     result.undershoot += pixel - coverage;
                 }
-                //if (coverage != pixel) {
-                    std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
-                              << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
-                              << "  " << slopeName << ": "                                                         //
-                              << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
-                              << std::setw(2) << (u32)pixel                                                        //
-                              << "  (" << std::setw(4) << fracCoverage << "  "                                     //
-                              << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << '.' << std::setw(2) //
-                              << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ')'                      //
-                              << "   "                                                                             //
-                              << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
-                              << (slope.IsPositive() ? 'P' : 'N')                                                  //
-                              << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
-                              << '\n';
+                // if (coverage != pixel) {
+                /*std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
+                          << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
+                          << "  " << slopeName << ": "                                                         //
+                          << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
+                          << std::setw(2) << (u32)pixel                                                        //
+                          << "  (" << std::setw(4) << fracCoverage << "  "                                     //
+                          << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << '.' << std::setw(2) //
+                          << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ')'                      //
+                          << "   "                                                                             //
+                          << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
+                          << (slope.IsPositive() ? 'P' : 'N')                                                  //
+                          << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
+                          << '\n';*/
                 //}
             }
         }
     };
-    calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    // calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
+    //calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
+    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -477,11 +477,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     TestResult result{};
 
     // All slopes
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All X-major slopes
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
@@ -496,6 +496,19 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
             testSlope(data, x, y, result);
         }
     }*/
+
+    // Some failing Y-major slopes due to off-by-one errors
+    /*testSlope(data, 3, 6, result);
+    testSlope(data, 3, 12, result);
+    testSlope(data, 10, 20, result);
+    testSlope(data, 41, 66, result);
+    testSlope(data, 37, 77, result);*/
+
+    // testSlope(data, 47, 99, result);
+    // testSlope(data, 94, 99, result);
+    // testSlope(data, 90, 104, result);
+    // testSlope(data, 77, 108, result);
+    // testSlope(data, 56, 109, result);
 
     // All diagonals
     /*for (i32 i = std::max<i32>(data.minX, data.minY); i <= std::min<i32>(data.maxX, data.maxY); i++) {
@@ -528,8 +541,8 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 19, 85, result);
     // testSlope(data, 19, 187, result);
     // testSlope(data, 19, 190, result);
-    testSlope(data, 3, 6, result);
-    testSlope(data, 5, 10, result);
+    // testSlope(data, 3, 6, result);
+    // testSlope(data, 5, 10, result);
     // testSlope(data, 3 * 8, 6 * 8, result);
     // testSlope(data, 4, 8, result);
     // testSlope(data, 5, 3, result);
@@ -541,6 +554,10 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 94, 99, result);
     // testSlope(data, 189, 192, result);
     // testSlope(data, 8, 16, result);
+    // testSlope(data, 1, 2, result);
+    // testSlope(data, 1, 4, result);
+    // testSlope(data, 2, 4, result);
+    // testSlope(data, 112, 169, result);
 
     // All X-major slopes for TOP test, except Y=0
     /*for (i32 y = std::max<u8>(1, data.minY); y <= data.maxY; y++) {

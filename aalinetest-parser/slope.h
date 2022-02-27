@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <iomanip>
+#include <iostream>
 #include <utility>
 
 /// <summary>
@@ -398,17 +400,24 @@ public:
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return invertGradient(finalCoverage);
         } else {
-            if (XStart(y) != XStart(y + 1)) {
-                // Last pixel of a vertical slice seems to be forced to maximum coverage
-                //  ... except in 1037 cases where it doesn't, like 53x80, 77x80, 53x82, 57x82, ..., 189x192
-                return invertGradient(kAAFracRange - 1);
-            }
             // There are 1745 off-by-one errors, all of them are -1
             const i32 fxs = (m_negative ? kOne - FracXStart(y) : FracXStart(y)) % kOne;
             const i32 baseCoverage = (fxs & kMask) >> 8;
             const i32 coverageStep = m_width * kAAFracRange / m_height;
             const i32 coverageBias = coverageStep / 2;
-            return invertGradient(baseCoverage + coverageBias);
+            const i32 finalCoverage = baseCoverage + coverageBias;
+            /*std::cout << "fxs=" << std::setw(6) << std::left << fxs                 //
+                      << "   basecov=" << std::setw(4) << std::left << baseCoverage //
+                      << "  step=" << std::setw(4) << std::left << coverageStep     //
+                      << "  bias=" << std::setw(4) << std::left << coverageBias     //
+                      << "  btm=" << (XStart(y) != XStart(y + 1) ? "1" : "0")       //
+                      << "  xstart=" << std::setw(10) << std::left << FracXStart(y) //
+                      << "   ";*/
+            if (baseCoverage + coverageStep >= kAAFracRange) {
+                // Coverage is forced to maximum or minimum under this case
+                return invertGradient(kAAFracRange - 1);
+            }
+            return invertGradient(finalCoverage);
         }
     }
 
