@@ -322,7 +322,6 @@ public:
     constexpr i32 FracAACoverage(i32 x, i32 y) const {
         // Antialiasing notes:
         // - AA coverage calculation uses different variables depending on whether the slope is X-major or not
-        //   - The formula is consistent across all slope types
         // - Perfectly horizontal or vertical edges (DX or DY == 0) are drawn in full alpha
         // - Perfectly diagonal edges (DX == DY) are drawn in half alpha (15, or 16 if gradient is inverted)
         // - Gradients may be positive or negative
@@ -333,7 +332,7 @@ public:
         //   - Left negative Y-major
         //   - Right positive Y-major
         // - Negative gradients are calculated by inverting the output of the corresponding positive gradient
-        // - The last pixel of every vertical subspan of Y-major edges has fixed coverage depending on the gradient:
+        // - The last pixel of almost all vertical subspans of Y-major edges has fixed coverage based on the gradient:
         //   - Positive gradient: full coverage
         //   - Negative gradient: zero coverage
 
@@ -344,16 +343,16 @@ public:
             //
             // normal:  RPY LPX LNY LNX
             // inverse: RPX RNY RNX LPY
-            //
-            // LR PN XY code rev PN|XY LR^(PN|XY) LR!=(PN|XY)
-            // -  -  -  RPY   -    -       -           -
-            // -  -  +  RPX   +    +       +           +
-            // -  +  -  RNY   +    +       +           +
-            // -  +  +  RNX   +    +       +           +
-            // +  -  -  LPY   +    -       +           +
-            // +  -  +  LPX   -    +       -           -
-            // +  +  -  LNY   -    +       -           -
-            // +  +  +  LNX   -    +       -           -
+            //                         LR!=(PN|XY)
+            // LR PN XY type inv PN|XY  LR^(PN|XY)
+            // -  -  -  RPY   -    -       -
+            // -  -  +  RPX   +    +       +
+            // -  +  -  RNY   +    +       +
+            // -  +  +  RNX   +    +       +
+            // +  -  -  LPY   +    -       +
+            // +  -  +  LPX   -    +       -
+            // +  +  -  LNY   -    +       -
+            // +  +  +  LNX   -    +       -
             //
             // Any of these matches our requirements:
             //   LR ^ (PN | XY)
@@ -374,6 +373,7 @@ public:
         }
         if (m_width == m_height) {
             // Perfect diagonals always have half alpha
+            // NOTE: in theory, this should be handled by the Y-major formula
             return invertGradient((kAAFracRange >> 1) - 1);
         }
 
