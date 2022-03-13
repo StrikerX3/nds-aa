@@ -448,26 +448,26 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else if (coverage < pixel) {
                     result.undershoot += pixel - coverage;
                 }
-                /*if (coverage != pixel) {
-                    std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
-                              << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
-                              << "  " << slopeName << ": "                                                         //
-                              << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
-                              << std::setw(2) << (u32)pixel                                                        //
-                              << "  (" << std::setw(4) << fracCoverage << "  "                                     //
-                              << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << '.' << std::setw(2) //
-                              << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ')'                      //
-                              << "   "                                                                             //
-                              << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
-                              << (slope.IsPositive() ? 'P' : 'N')                                                  //
-                              << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
-                              << '\n';
-                }*/
+                // if (coverage != pixel) {
+                std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
+                          << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
+                          << "  " << slopeName << ": "                                                         //
+                          << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
+                          << std::setw(2) << (u32)pixel                                                        //
+                          << "  (" << std::setw(4) << fracCoverage << "  "                                     //
+                          << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << '.' << std::setw(2) //
+                          << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ')'                      //
+                          << "   "                                                                             //
+                          << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
+                          << (slope.IsPositive() ? 'P' : 'N')                                                  //
+                          << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
+                          << '\n';
+                //}
             }
         }
     };
     calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
+    // calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -477,11 +477,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     TestResult result{};
 
     // All slopes
-    for (i32 y = data.minY; y <= data.maxY; y++) {
+    /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }
+    }*/
 
     // All X-major slopes
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
@@ -497,8 +497,13 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
         }
     }*/
 
-    // testSlope(data, 3, 9, result);
-    // testSlope(data, 9, 87, result);
+    testSlope(data, 54, 2, result);
+    testSlope(data, 56, 2, result);
+    testSlope(data, 57, 3, result);
+    testSlope(data, 60, 3, result);
+    testSlope(data, 62, 3, result);
+    testSlope(data, 245, 192, result);
+    // testSlope(data, 186, 185, result);
 
     if (!result.mismatch) {
         std::cout << "OK!\n";

@@ -398,6 +398,14 @@ public:
             const i32 coverageBias = ((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width);
             const i32 fracCoverage = xOffsetSegment * coverageStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
+
+            std::cout << "startX=" << std::setw(3) << std::left << startX                                     //
+                      << "  fxs=" << std::setw(10) << std::left << (m_negative ? FracXEnd(y) : FracXStart(y)) //
+                      << "  xofs_origin=" << std::setw(3) << std::left << xOffsetOrigin                       //
+                      << "  xofs_segment=" << std::setw(4) << std::left << xOffsetSegment                     //
+                      << "  step=" << std::setw(4) << std::left << coverageStep                               //
+                      << "  bias=" << std::setw(6) << std::left << coverageBias                               //
+                      << "   ";
             return invertGradient(finalCoverage);
         } else {
             const i32 fxs = (m_negative ? kOne - FracXStart(y) - 1 : FracXStart(y)) % kOne;
