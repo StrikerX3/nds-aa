@@ -448,7 +448,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else if (coverage < pixel) {
                     result.undershoot += pixel - coverage;
                 }
-                if (coverage != pixel) {
+                /*if (coverage != pixel) {
                     std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
                               << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                               << "  " << slopeName << ": "                                                         //
@@ -462,12 +462,12 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                               << (slope.IsPositive() ? 'P' : 'N')                                                  //
                               << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
                               << '\n';
-                }
+                }*/
             }
         }
     };
     calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    // calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
+    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -477,11 +477,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     TestResult result{};
 
     // All slopes
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All X-major slopes
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
@@ -491,13 +491,14 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All Y-major slopes (except diagonals)
-    for (i32 y = data.minY; y <= data.maxY; y++) {
+    /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= std::min<i32>(data.maxX, y - 1); x++) {
             testSlope(data, x, y, result);
         }
-    }
+    }*/
 
-    // testSlope(data, 38, 41, result);
+    // testSlope(data, 3, 9, result);
+    // testSlope(data, 9, 87, result);
 
     if (!result.mismatch) {
         std::cout << "OK!\n";

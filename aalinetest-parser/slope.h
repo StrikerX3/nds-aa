@@ -400,19 +400,11 @@ public:
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
             return invertGradient(finalCoverage);
         } else {
-            const i32 fxs = (m_negative ? kOne - FracXStart(y) : FracXStart(y)) % kOne;
+            const i32 fxs = (m_negative ? kOne - FracXStart(y) - 1 : FracXStart(y)) % kOne;
             const i32 baseCoverage = (fxs & kMask) >> 8;
             const i32 coverageStep = m_width * kAAFracRange / m_height;
             const i32 coverageBias = coverageStep / 2;
             const i32 coverageAdjust = (m_dx >> 8) - coverageStep; // Compensate for some off-by-one errors
-
-            /*std::cout << "fxs=" << std::setw(6) << std::left << fxs                 //
-                      << "   basecov=" << std::setw(4) << std::left << baseCoverage //
-                      << "  step=" << std::setw(4) << std::left << coverageStep     //
-                      << "  bias=" << std::setw(4) << std::left << coverageBias     //
-                      << "  btm=" << (XStart(y) != XStart(y + 1) ? "1" : "0")       //
-                      << "  xstart=" << std::setw(10) << std::left << FracXStart(y) //
-                      << "   ";*/
             if (baseCoverage + coverageStep + coverageAdjust >= kAAFracRange) {
                 // Coverage is forced to maximum or minimum under this case
                 return invertGradient(kAAFracRange - 1);
