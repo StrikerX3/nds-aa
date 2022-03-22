@@ -69,8 +69,8 @@ public:
     // TODO: make GA parameters configurable
 
 private:
-    static constexpr size_t kWorkers = 6;
-    static constexpr bool kWorkOnMainThread = false;
+    static constexpr size_t kWorkers = 5;
+    static constexpr bool kWorkOnMainThread = true;
 
     DataSet m_dataSet;
     std::vector<Operation> m_templateOps;
@@ -98,6 +98,7 @@ private:
     float m_randomSelectionWeight = 2.0f;
     float m_randomGenerationWeight = 1.0f;
     float m_crossoverPopWeight = 7.0f;
+    size_t m_chromosomesToPreserve = 3;
 
     // Mutation parameters
     float m_randomMutationChance = 0.10f;
@@ -133,4 +134,7 @@ private:
                       std::uniform_int_distribution<size_t> &intDist);
 
     uint32_t EvaluateFitness(Chromosome &chrom, Context &ctx);
+
+    void ProcessChromosomes(std::uniform_int_distribution<size_t> &intDist,
+                            std::uniform_real_distribution<float> &pctDist, Context &ctx);
 };

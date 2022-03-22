@@ -204,7 +204,7 @@ struct FixedStack {
     }
 
     size_t size() const {
-        return stack.size();
+        return pos;
     }
 
     i32 &operator[](size_t i) {

@@ -1,8 +1,9 @@
 #include "func_search.h"
 
 GAFuncSearch::GAFuncSearch(std::filesystem::path root)
-    : m_dataSet{loadXMajorDataSet(root)}
-    , m_semaphore{0}
+    : /*m_dataSet{loadXMajorDataSet(root)}
+    ,*/
+    m_semaphore{0}
     , m_barrier{kWorkers + 1}
     , m_randomEngine{m_randomDev()}
     , m_popDist{0, m_population.size()} {
@@ -21,18 +22,7 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
                     break;
                 }
 
-                // Mutation and fitness evaluation
-                // Preserve 3 best chromosomes, mutate all others
-                size_t idx;
-                while ((idx = m_nextChromosome++) < m_population.size()) {
-                    auto &chrom = m_population[idx];
-                    if (idx >= 3) {
-                        RandomizeGenes(chrom, pctDist);
-                        SpliceGenes(chrom, pctDist, intDist);
-                        ReverseGenes(chrom, pctDist, intDist);
-                    }
-                    EvaluateFitness(chrom, ctx);
-                }
+                ProcessChromosomes(intDist, pctDist, ctx);
 
                 m_barrier.arrive();
             }
@@ -56,7 +46,7 @@ void GAFuncSearch::NextGeneration() {
         // Elitist selection
         // First m_elitistSelectionPct% entries will contain the best chromosomes
         std::sort(m_population.begin(), m_population.end());
-
+        /*
         // Random selection
         // Next m_randomSelectionPct% entries will contain randomly selected entries
         std::shuffle(m_population.begin() + m_randomIndexStart, m_population.end(), m_randomEngine);
@@ -76,23 +66,14 @@ void GAFuncSearch::NextGeneration() {
             } else {
                 RandomCrossover(m_population[i], 0, m_crossoverStart - 1);
             }
-        }
+        }*/
     }
 
     m_nextChromosome = 0;
     m_semaphore.release(kWorkers);
 
     if constexpr (kWorkOnMainThread) {
-        size_t i;
-        while ((i = m_nextChromosome++) < m_population.size()) {
-            auto &chrom = m_population[i];
-            if (i != 0) {
-                RandomizeGenes(chrom, m_pctDist);
-                SpliceGenes(chrom, m_pctDist, m_intDist);
-                ReverseGenes(chrom, m_pctDist, m_intDist);
-            }
-            EvaluateFitness(chrom, m_ctx);
-        }
+        ProcessChromosomes(m_intDist, m_pctDist, m_ctx);
     }
 
     m_barrier.arrive_and_wait();
@@ -159,7 +140,7 @@ void GAFuncSearch::RandomizeGenes(Chromosome &chrom, std::uniform_real_distribut
 void GAFuncSearch::SpliceGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist,
                                std::uniform_int_distribution<size_t> &intDist) {
     std::uniform_int<size_t>::param_type param{0, m_templateOps.size() - 1};
-    while (m_pctDist(m_randomEngine) < m_spliceMutationChance) {
+    if (m_pctDist(m_randomEngine) < m_spliceMutationChance) {
         size_t start = m_intDist(m_randomEngine, param);
         size_t end = m_intDist(m_randomEngine, param);
         size_t pos = m_intDist(m_randomEngine, param);
@@ -185,7 +166,7 @@ void GAFuncSearch::SpliceGenes(Chromosome &chrom, std::uniform_real_distribution
 void GAFuncSearch::ReverseGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist,
                                 std::uniform_int_distribution<size_t> &intDist) {
     std::uniform_int<size_t>::param_type param{0, m_templateOps.size() - 1};
-    while (m_pctDist(m_randomEngine) < m_reverseMutationChance) {
+    if (m_pctDist(m_randomEngine) < m_reverseMutationChance) {
         size_t start = m_intDist(m_randomEngine, param);
         size_t end = m_intDist(m_randomEngine, param);
 
@@ -238,4 +219,31 @@ uint32_t GAFuncSearch::EvaluateFitness(Chromosome &chrom, Context &ctx) {
     //       - this is set to the current generation + some number of generations
     //       - the intention is to remove entries that haven't failed in a while for performance
     return chrom.fitness;
+}
+
+void GAFuncSearch::ProcessChromosomes(std::uniform_int_distribution<size_t> &intDist,
+                                      std::uniform_real_distribution<float> &pctDist, Context &ctx) {
+    // Mutation and fitness evaluation
+    // Preserve 3 best chromosomes, mutate all others
+    size_t idx;
+    while ((idx = m_nextChromosome++) < m_population.size()) {
+        auto &chrom = m_population[idx];
+        if (idx >= m_randomGenStart && idx < m_crossoverStart) {
+            NewChromosome(chrom);
+        } else {
+            if (idx >= m_crossoverStart) {
+                if (m_pctDist(m_randomEngine) < 0.5f) {
+                    OnePointCrossover(chrom, 0, m_crossoverStart - 1);
+                } else {
+                    RandomCrossover(chrom, 0, m_crossoverStart - 1);
+                }
+            }
+            if (idx >= m_chromosomesToPreserve) {
+                RandomizeGenes(chrom, pctDist);
+                SpliceGenes(chrom, pctDist, intDist);
+                ReverseGenes(chrom, pctDist, intDist);
+            }
+        }
+        EvaluateFitness(chrom, ctx);
+    }
 }
