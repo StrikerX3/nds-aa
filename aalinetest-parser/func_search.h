@@ -21,6 +21,7 @@ struct ExtDataPoint {
 class GAFuncSearch {
 public:
     static constexpr size_t kNumOps = 48;
+    static constexpr size_t kPopSize = 128;
 
     struct Gene {
         Operation op;
@@ -60,7 +61,7 @@ public:
 
     void NextGeneration();
 
-    const std::array<Chromosome, 128> &Population() const {
+    const std::array<Chromosome, kPopSize> &Population() const {
         return m_population;
     }
 
@@ -84,7 +85,7 @@ private:
     Context m_ctx;
 
     uint64_t m_generation = 0;
-    std::array<Chromosome, 128> m_population;
+    std::array<Chromosome, kPopSize> m_population;
 
     // Random number generator
     std::random_device m_randomDev;
@@ -101,7 +102,7 @@ private:
     size_t m_chromosomesToPreserve = 3;
 
     // Mutation parameters
-    float m_randomMutationChance = 0.10f;
+    float m_randomMutationChance = 0.30f;
     float m_spliceMutationChance = 0.05f;
     float m_reverseMutationChance = 0.05f;
 

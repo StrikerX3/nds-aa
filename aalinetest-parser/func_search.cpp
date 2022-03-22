@@ -8,6 +8,17 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
     , m_randomEngine{m_randomDev()}
     , m_popDist{0, m_population.size()} {
 
+    // TODO: redesign threading
+    // - run entire GA in each thread, including isolated populations and perhaps even different parameters
+    // - have threads push some chromosomes (N best, N random) into a public shared pool
+    // - have threads consume chromosomes from the public shared pool
+    // - minimize locks (e.g. public shared pool has reserved slots for each thread and double-buffering)
+
+    // Best function so far:
+    //  push_1024 - push_aa_step push_aa_step push_y push_height - div_height - push_frac_x_width push_y
+    //  push_frac_x_start push_frac_x_width - insert_aa_frac_bits push_height - shl - - - - - - - div push_y - sub div -
+    //  push_31 - shr - push_aa_step div_2 push_x_start - - mul_height_div_width_aa add - - - - add -
+
     for (size_t i = 0; i < m_workers.size(); i++) {
         m_workers[i] = std::jthread{[&] {
             std::random_device randomDev;
@@ -201,7 +212,7 @@ uint32_t GAFuncSearch::EvaluateFitness(Chromosome &chrom, Context &ctx) {
             break;
         }
         i32 result = ctx.stack.back();
-        result %= 1024;
+        result &= 1023;
         if (!dataPoint.left) {
             result ^= 1023;
         }
@@ -223,8 +234,7 @@ uint32_t GAFuncSearch::EvaluateFitness(Chromosome &chrom, Context &ctx) {
 
 void GAFuncSearch::ProcessChromosomes(std::uniform_int_distribution<size_t> &intDist,
                                       std::uniform_real_distribution<float> &pctDist, Context &ctx) {
-    // Mutation and fitness evaluation
-    // Preserve 3 best chromosomes, mutate all others
+    // Crossover, mutation and fitness evaluation
     size_t idx;
     while ((idx = m_nextChromosome++) < m_population.size()) {
         auto &chrom = m_population[idx];

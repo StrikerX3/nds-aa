@@ -62,6 +62,7 @@ enum class Operator {
     DivHeight,
     Div2,
     MulHeightDivWidthAA,
+    AAStep,
 
 };
 
@@ -110,6 +111,7 @@ constexpr Operator kOperators[] = {
     Operator::DivHeight,
     Operator::Div2,
     Operator::MulHeightDivWidthAA,
+    Operator::AAStep,
 
 };
 
@@ -159,6 +161,7 @@ inline std::string OperatorName(Operator op) {
     case Operator::DivHeight: return "div_height";
     case Operator::Div2: return "div_2";
     case Operator::MulHeightDivWidthAA: return "mul_height_div_width_aa";
+    case Operator::AAStep: return "push_aa_step";
     }
     return "(invalid op)";
 }
@@ -345,7 +348,7 @@ private:
                     return false;
                 }
                 stack.pop_back();
-                std::rotate(&stack[stack.size()], &stack[stack.size() - 1], &stack[stack.size() - count]);
+                std::rotate(&stack[stack.size() - count], &stack[stack.size() - 1], &stack[stack.size()]);
                 return true;
             }
 
@@ -361,7 +364,7 @@ private:
                     return false;
                 }
                 stack.pop_back();
-                std::rotate(&stack[stack.size()], &stack[stack.size() - count + 1], &stack[stack.size() - count]);
+                std::rotate(&stack[stack.size() - count], &stack[stack.size() - count + 1], &stack[stack.size()]);
                 return true;
             }
 
@@ -384,6 +387,7 @@ private:
         case Operator::MulHeightDivWidthAA:
             return unaryFunc(
                 [&](i32 x) { return ((x * ctx.vars.height * 32) << Slope::kAAFracBits) / ctx.vars.width; });
+        case Operator::AAStep: stack.push_back(ctx.vars.height * Slope::kAAFracRange / ctx.vars.width); return true;
         }
         return false;
     }
