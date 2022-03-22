@@ -6,10 +6,11 @@
 #include "dataset.h"
 #include "file.h"
 #include "func_generator.h"
+#include "func_search.h"
 #include "interactive_eval.h"
 #include "tester.h"
 
-int main() {
+int main1() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
@@ -126,6 +127,159 @@ int main4() {
     dataPoints.push_back(DataPoint{.x = 10, .y = 0, .width = 54, .height = 2, .expectedOutput = 12});
 
     generateFunc(templateOps, dataPoints);
+
+    return EXIT_SUCCESS;
+}
+
+// --------------------------------------------------------------------------------
+
+int main() {
+    constexpr i32 kConstants[] = {
+        // 1,
+        // Slope::kAARange, Slope::kAAFracBitsX, Slope::kAABaseX,
+        // Slope::kFracBits, Slope::kFracBits >> 1,
+        // Slope::kOne, Slope::kBias,
+    };
+    std::vector<Operation> templateOps;
+    {
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushX});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushY});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushHeight});
+        for (i32 c : kConstants) {
+            templateOps.push_back(Operation{.type = Operation::Type::Constant, .constVal = c});
+        }
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXStart});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXEnd});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XStart});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XEnd});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Div2});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Add});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Subtract});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Multiply});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Divide});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Modulo});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Not});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Dup});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Swap});
+    }
+
+    std::vector<ExtDataPoint> dataPoints;
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 36, .y = 1, .width = 54, .height = 2, .expectedOutput = 11}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 2, .y = 1, .width = 15, .height = 6, .expectedOutput = 0}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 7, .y = 3, .width = 15, .height = 6, .expectedOutput = 0}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 9, .y = 0, .width = 54, .height = 2, .expectedOutput = 10}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 12, .y = 5, .width = 15, .height = 6, .expectedOutput = 0}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 44, .y = 3, .width = 56, .height = 5, .expectedOutput = 31}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 45, .y = 4, .width = 56, .height = 5, .expectedOutput = 2}, .left = true, .positive = true});
+
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 106, .y = 106, .width = 186, .height = 185, .expectedOutput = 2}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 107, .y = 106, .width = 186, .height = 185, .expectedOutput = 31}, .left = true, .positive = true});
+
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 0, .y = 0, .width = 15, .height = 6, .expectedOutput = 6}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 1, .y = 0, .width = 15, .height = 6, .expectedOutput = 19}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 35, .y = 1, .width = 54, .height = 2, .expectedOutput = 9}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 3, .y = 1, .width = 15, .height = 6, .expectedOutput = 12}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 105, .y = 105, .width = 186, .height = 185, .expectedOutput = 29}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 37, .y = 1, .width = 54, .height = 2, .expectedOutput = 12}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 4, .y = 1, .width = 15, .height = 6, .expectedOutput = 25}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 43, .y = 3, .width = 56, .height = 5, .expectedOutput = 28}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 6, .y = 2, .width = 15, .height = 6, .expectedOutput = 19}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 10, .y = 4, .width = 15, .height = 6, .expectedOutput = 6}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 108, .y = 107, .width = 186, .height = 185, .expectedOutput = 29}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 8, .y = 0, .width = 54, .height = 2, .expectedOutput = 9}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 46, .y = 4, .width = 56, .height = 5, .expectedOutput = 4}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 92, .y = 92, .width = 186, .height = 185, .expectedOutput = 0}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 93, .y = 93, .width = 186, .height = 185, .expectedOutput = 31}, .left = true, .positive = true});
+
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 5, .y = 2, .width = 15, .height = 6, .expectedOutput = 6}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 8, .y = 3, .width = 15, .height = 6, .expectedOutput = 12}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 9, .y = 3, .width = 15, .height = 6, .expectedOutput = 25}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 11, .y = 4, .width = 15, .height = 6, .expectedOutput = 19}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 13, .y = 5, .width = 15, .height = 6, .expectedOutput = 12}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 14, .y = 5, .width = 15, .height = 6, .expectedOutput = 25}, .left = true, .positive = true});
+    dataPoints.push_back(ExtDataPoint{
+        .dp = {.x = 10, .y = 0, .width = 54, .height = 2, .expectedOutput = 12}, .left = true, .positive = true});
+
+    using clk = std::chrono::steady_clock;
+    using namespace std::chrono_literals;
+
+    GAFuncSearch ga{"E:/Development/_refs/NDS/Research/Antialiasing"};
+    ga.SetTemplateOps(templateOps);
+    ga.SetFixedDataPoints(dataPoints);
+    auto &pop = ga.Population();
+    auto t = clk::now();
+    auto ts = t;
+    for (;;) {
+        ga.NextGeneration();
+        auto t2 = clk::now();
+        if (t2 - t >= 1s) {
+            t = t2;
+            const auto &best = std::min_element(pop.begin(), pop.end());
+            std::cout << "Generation " << ga.CurrGeneration() << ":\n";
+            std::cout << "  Speed: " << std::fixed << std::setprecision(2)
+                      << (double)ga.CurrGeneration() * 1000000000.0 /
+                             std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - ts).count()
+                      << " gens/sec\n";
+            std::cout << "  Best fitness: " << best->fitness << "\n";
+            std::cout << "  Function:";
+            for (auto &gene : best->genes) {
+                std::cout << ' ';
+                if (gene.enabled) {
+                    std::cout << gene.op.Str();
+                } else {
+                    std::cout << '-';
+                }
+            }
+            std::cout << "\n";
+        }
+    }
 
     return EXIT_SUCCESS;
 }

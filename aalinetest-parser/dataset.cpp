@@ -221,3 +221,10 @@ DataSet loadDataSet(std::filesystem::path root) {
                    .rnx = loadOne(root / "RNX.bin"),
                    .rny = loadOne(root / "RNY.bin")};
 }
+
+DataSet loadXMajorDataSet(std::filesystem::path root) {
+    return DataSet{.lpx = loadOne(root / "LPX.bin"),
+                   .lnx = loadOne(root / "LNX.bin"),
+                   .rpx = loadOne(root / "RPX.bin"),
+                   .rnx = loadOne(root / "RNX.bin")};
+}

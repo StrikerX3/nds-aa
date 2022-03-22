@@ -449,7 +449,9 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                     result.undershoot += pixel - coverage;
                 }
                 // if (coverage != pixel) {
-                std::cout << std::setw(3) << std::right << testX << 'x' << std::setw(3) << std::left << testY  //
+                const auto w = slopeWidth;
+                const auto h = slopeHeight;
+                std::cout << std::setw(3) << std::right << w << 'x' << std::setw(3) << std::left << h          //
                           << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
                           << "  " << slopeName << ": "                                                         //
                           << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
@@ -466,8 +468,8 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
             }
         }
     };
-    calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    // calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
+    // calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
+    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -497,13 +499,17 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
         }
     }*/
 
+    testSlope(data, 2, 1, result);
     testSlope(data, 54, 2, result);
-    testSlope(data, 56, 2, result);
-    testSlope(data, 57, 3, result);
-    testSlope(data, 60, 3, result);
-    testSlope(data, 62, 3, result);
-    testSlope(data, 245, 192, result);
+    // testSlope(data, 56, 2, result);
+    // testSlope(data, 57, 3, result);
+    // testSlope(data, 60, 3, result);
+    // testSlope(data, 62, 3, result);
+    // testSlope(data, 150, 12, result);
+    // testSlope(data, 250, 20, result);
+    // testSlope(data, 245, 192, result);
     // testSlope(data, 186, 185, result);
+    // testSlope(data, 255, 192, result);
 
     if (!result.mismatch) {
         std::cout << "OK!\n";

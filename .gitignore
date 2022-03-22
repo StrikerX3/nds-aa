@@ -430,3 +430,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Intel VTune
+VTune/

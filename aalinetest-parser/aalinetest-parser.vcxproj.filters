@@ -30,6 +30,9 @@
     <ClCompile Include="interactive_eval.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="func_search.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="slope.h">
@@ -54,6 +57,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="interactive_eval.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="func_search.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

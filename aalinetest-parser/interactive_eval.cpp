@@ -215,7 +215,7 @@ public:
         return m_stepEvalDataPoint;
     }
 
-    const std::vector<i32> &StepEvalStack() const {
+    const FixedStack &StepEvalStack() const {
         return m_stepEval.ctx.stack;
     }
 

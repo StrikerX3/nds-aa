@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClCompile Include="dataset.cpp" />
     <ClCompile Include="func_generator.cpp" />
+    <ClCompile Include="func_search.cpp" />
     <ClCompile Include="interactive_eval.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tester.cpp" />
@@ -152,6 +153,7 @@
     <ClInclude Include="file.h" />
     <ClInclude Include="func.h" />
     <ClInclude Include="func_generator.h" />
+    <ClInclude Include="func_search.h" />
     <ClInclude Include="interactive_eval.h" />
     <ClInclude Include="slope.h" />
     <ClInclude Include="tester.h" />

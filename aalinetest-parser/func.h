@@ -177,9 +177,52 @@ struct Variables {
     }
 };
 
+struct FixedStack {
+    std::array<i32, 256> stack{};
+    size_t pos = 0;
+
+    void clear() {
+        pos = 0;
+    }
+
+    bool empty() const {
+        return pos == 0;
+    }
+
+    i32 back() const {
+        return stack[pos - 1];
+    }
+
+    void push_back(i32 value) {
+        stack[pos++] = value;
+    }
+
+    void pop_back() {
+        if (pos > 0) {
+            pos--;
+        }
+    }
+
+    size_t size() const {
+        return stack.size();
+    }
+
+    i32 &operator[](size_t i) {
+        return stack[i];
+    }
+
+    const i32 *begin() const {
+        return &stack[0];
+    }
+
+    const i32 *end() const {
+        return &stack[pos];
+    }
+};
+
 struct Context {
     Variables vars;
-    std::vector<i32> stack;
+    FixedStack stack;
     Slope slope;
 
 private:
@@ -206,7 +249,7 @@ struct Operation {
         }
     }
 
-    /*[[gnu::flatten]]*/ bool Execute(Context &ctx) {
+    /*[[gnu::flatten]]*/ bool Execute(Context &ctx) const {
         switch (type) {
         case Type::Operator: return ExecuteOperator(ctx);
         case Type::Constant: return ExecuteConstant(ctx);
@@ -215,7 +258,7 @@ struct Operation {
     }
 
 private:
-    bool ExecuteOperator(Context &ctx) {
+    bool ExecuteOperator(Context &ctx) const {
         auto &stack = ctx.stack;
         auto binaryFunc = [&](auto &&func) -> bool {
             if (stack.size() < 2) {
@@ -302,7 +345,7 @@ private:
                     return false;
                 }
                 stack.pop_back();
-                std::rotate(stack.rbegin(), stack.rbegin() + 1, stack.rbegin() + count);
+                std::rotate(&stack[stack.size()], &stack[stack.size() - 1], &stack[stack.size() - count]);
                 return true;
             }
 
@@ -318,7 +361,7 @@ private:
                     return false;
                 }
                 stack.pop_back();
-                std::rotate(stack.rbegin(), stack.rbegin() + count - 1, stack.rbegin() + count);
+                std::rotate(&stack[stack.size()], &stack[stack.size() - count + 1], &stack[stack.size() - count]);
                 return true;
             }
 
@@ -345,7 +388,7 @@ private:
         return false;
     }
 
-    bool ExecuteConstant(Context &ctx) {
+    bool ExecuteConstant(Context &ctx) const {
         ctx.stack.push_back(constVal);
         return true;
     }
@@ -383,6 +426,13 @@ struct Evaluator {
             return false;
         }
         auto &op = ops[index];
+        if (!op.Execute(ctx)) {
+            return false;
+        }
+        return true;
+    }
+
+    bool EvalOp(const Operation &op) {
         if (!op.Execute(ctx)) {
             return false;
         }

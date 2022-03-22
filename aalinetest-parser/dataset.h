@@ -30,3 +30,4 @@ struct DataSet {
 
 void extractDataSet(std::filesystem::path root);
 DataSet loadDataSet(std::filesystem::path root);
+DataSet loadXMajorDataSet(std::filesystem::path root);
