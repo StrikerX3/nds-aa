@@ -14,7 +14,7 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
     // - have threads consume chromosomes from the public shared pool
     // - minimize locks (e.g. public shared pool has reserved slots for each thread and double-buffering)
 
-    // Best function so far:
+    // Best function so far: (fitness = 27)
     //  push_1024 - push_aa_step push_aa_step push_y push_height - div_height - push_frac_x_width push_y
     //  push_frac_x_start push_frac_x_width - insert_aa_frac_bits push_height - shl - - - - - - - div push_y - sub div -
     //  push_31 - shr - push_aa_step div_2 push_x_start - - mul_height_div_width_aa add - - - - add -
@@ -35,7 +35,7 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
 
                 ProcessChromosomes(intDist, pctDist, ctx);
 
-                m_barrier.arrive();
+                void(m_barrier.arrive());
             }
         }};
     }
@@ -247,8 +247,6 @@ void GAFuncSearch::ProcessChromosomes(std::uniform_int_distribution<size_t> &int
                 } else {
                     RandomCrossover(chrom, 0, m_crossoverStart - 1);
                 }
-            }
-            if (idx >= m_chromosomesToPreserve) {
                 RandomizeGenes(chrom, pctDist);
                 SpliceGenes(chrom, pctDist, intDist);
                 ReverseGenes(chrom, pctDist, intDist);

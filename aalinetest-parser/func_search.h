@@ -95,11 +95,9 @@ private:
     std::uniform_int_distribution<size_t> m_popDist;
 
     // Selection parameters
-    float m_eliteSelectionWeight = 4.0f;
-    float m_randomSelectionWeight = 2.0f;
+    float m_eliteSelectionWeight = 1.0f;
     float m_randomGenerationWeight = 1.0f;
-    float m_crossoverPopWeight = 7.0f;
-    size_t m_chromosomesToPreserve = 3;
+    float m_crossoverPopWeight = 5.0f;
 
     // Mutation parameters
     float m_randomMutationChance = 0.30f;
@@ -110,17 +108,13 @@ private:
     float m_geneEnablePct = 0.5f;
 
     // Computed parameters
-    float m_rcpTotalWeights =
-        1.0f / (m_eliteSelectionWeight + m_randomSelectionWeight + m_randomGenerationWeight + m_crossoverPopWeight);
+    float m_rcpTotalWeights = 1.0f / (m_eliteSelectionWeight + m_randomGenerationWeight + m_crossoverPopWeight);
     float m_eliteSelectionPct = m_eliteSelectionWeight * m_rcpTotalWeights;
-    float m_randomSelectionPct = m_randomSelectionWeight * m_rcpTotalWeights;
     float m_randomGenerationPct = m_randomGenerationWeight * m_rcpTotalWeights;
-    float m_crossoverPopPct = m_crossoverPopWeight * m_rcpTotalWeights;
+    // float m_crossoverPopPct = m_crossoverPopWeight * m_rcpTotalWeights;
 
-    size_t m_randomIndexStart = m_population.size() * m_eliteSelectionPct + 0.5f;
-    size_t m_randomGenStart = m_population.size() * (m_eliteSelectionPct + m_randomSelectionPct) + 0.5f;
-    size_t m_crossoverStart =
-        m_population.size() * (m_eliteSelectionPct + m_randomSelectionPct + m_randomGenerationPct) + 0.5f;
+    size_t m_randomGenStart = m_population.size() * m_eliteSelectionPct + 0.5f;
+    size_t m_crossoverStart = m_population.size() * (m_eliteSelectionPct + m_randomGenerationPct) + 0.5f;
 
     void NewChromosome(Chromosome &chrom);
     void OnePointCrossover(Chromosome &chrom, size_t first, size_t last);
