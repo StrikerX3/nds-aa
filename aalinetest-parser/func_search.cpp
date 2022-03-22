@@ -14,10 +14,10 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
     // - have threads consume chromosomes from the public shared pool
     // - minimize locks (e.g. public shared pool has reserved slots for each thread and double-buffering)
 
-    // Best function so far: (fitness = 27)
-    //  push_1024 - push_aa_step push_aa_step push_y push_height - div_height - push_frac_x_width push_y
-    //  push_frac_x_start push_frac_x_width - insert_aa_frac_bits push_height - shl - - - - - - - div push_y - sub div -
-    //  push_31 - shr - push_aa_step div_2 push_x_start - - mul_height_div_width_aa add - - - - add -
+    // Best fitness: 11
+    // Function: push_x_width - - push_31 push_5 push_4 dup push_aa_step mul sub push_x_end div_2 dup - - - - - push_x
+    // shl sar sub - add shr push_x_start push_9 - mul_width - - - - - - sub mul_height_div_width_aa - push_aa_step - -
+    // - div_2 - - add - add
 
     for (size_t i = 0; i < m_workers.size(); i++) {
         m_workers[i] = std::jthread{[&] {
