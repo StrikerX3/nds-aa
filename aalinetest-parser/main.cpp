@@ -473,6 +473,9 @@ int main() {
     dataPoints.push_back({{0, 0, 62, 2, 16}, true, true});
     dataPoints.push_back({{31, 1, 62, 2, 16}, true, true});
 
+    dataPoints.push_back({{23, 1, 70, 3, 7}, true, true});
+    dataPoints.push_back({{47, 2, 70, 3, 36}, true, true});
+
     using clk = std::chrono::steady_clock;
     using namespace std::chrono_literals;
 

@@ -10,15 +10,15 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root) {
 
     for (size_t i = 0; i < m_workers.size(); i++) {
         /*m_workerStates[i].randomGenerationWeight = 1.0f + i * 0.5f;
-        m_workerStates[i].crossoverPopWeight = 5.0f + i * 1.0f;
+        m_workerStates[i].crossoverPopWeight = 5.0f + i * 1.0f;*/
 
-        m_workerStates[i].randomMutationChance = 0.30f + i * 0.07f;
+        m_workerStates[i].randomMutationChance = 0.10f + i * 0.15f;
         m_workerStates[i].spliceMutationChance = 0.05f + i * 0.01f;
         m_workerStates[i].reverseMutationChance = 0.05f + i * 0.01f;
 
-        m_workerStates[i].geneEnablePct = 0.4f + i * 0.05f;
+        // m_workerStates[i].geneEnablePct = 0.4f + i * 0.1f;
 
-        m_workerStates[i].ComputeParameters();*/
+        // m_workerStates[i].ComputeParameters();
 
         m_workers[i] = std::jthread{[&, id = i] {
             while (m_running) {
@@ -41,12 +41,6 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
         for (auto &chrom : state.population) {
             state.NewChromosome(chrom, m_templateOps);
         }
-    } else {
-        // Replace weakest chromosomes with shared ones
-        for (size_t i = 0; i < kWorkers; i++) {
-            state.population[state.population.size() - i - 1] =
-                m_sharedStates[i].population[!m_sharedStates[i].popBufferFlip];
-        }
     }
 
     // Crossover, mutation and fitness evaluation
@@ -54,8 +48,13 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
         auto &chrom = state.population[idx];
         if (idx >= state.randomGenStart && idx < state.crossoverStart) {
             state.NewChromosome(chrom, m_templateOps);
-        } else {
-            if (idx >= state.crossoverStart) {
+        } else if (idx >= state.crossoverStart) {
+            if (idx < state.crossoverStart + kWorkers) {
+                // Not 100% thread-safe... we'll get some crossovers for free
+                size_t workerIdx = idx - state.crossoverStart;
+                auto &sharedState = m_sharedStates[workerIdx];
+                state.population[idx] = sharedState.population[!sharedState.popBufferFlip];
+            } else {
                 if (state.pctDist(state.randomEngine) < 0.5f) {
                     state.OnePointCrossover(chrom, 0, state.crossoverStart - 1);
                 } else {
@@ -66,6 +65,7 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
                 state.ReverseGenes(chrom);
             }
         }
+
         state.EvaluateFitness(chrom, m_fixedDataPoints);
         if (chrom.fitness == 0) {
             Stop();

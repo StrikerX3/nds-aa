@@ -20,8 +20,8 @@ struct ExtDataPoint {
 // A specialized genetic algorithm for searching functions
 class GAFuncSearch {
 public:
-    static constexpr size_t kNumOps = 32;
-    static constexpr size_t kPopSize = 200;
+    static constexpr size_t kNumOps = 48;
+    static constexpr size_t kPopSize = 150;
     static constexpr size_t kWorkers = 8;
 
     struct Gene {
