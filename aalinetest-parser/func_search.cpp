@@ -1,18 +1,7 @@
 #include "func_search.h"
 
-GAFuncSearch::GAFuncSearch(std::filesystem::path root)
-    : /*m_dataSet{loadXMajorDataSet(root)}
-    ,*/
-    m_semaphore{0}
-    , m_barrier{kWorkers + 1}
-    , m_randomEngine{m_randomDev()}
-    , m_popDist{0, m_population.size()} {
-
-    // TODO: redesign threading
-    // - run entire GA in each thread, including isolated populations and perhaps even different parameters
-    // - have threads push some chromosomes (N best, N random) into a public shared pool
-    // - have threads consume chromosomes from the public shared pool
-    // - minimize locks (e.g. public shared pool has reserved slots for each thread and double-buffering)
+GAFuncSearch::GAFuncSearch(std::filesystem::path root) {
+    //: m_dataSet{loadXMajorDataSet(root)}
 
     // Best fitness: 11
     // Function: push_x_width - - push_31 push_5 push_4 dup push_aa_step mul sub push_x_end div_2 dup - - - - - push_x
@@ -20,22 +9,20 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
     // - div_2 - - add - add
 
     for (size_t i = 0; i < m_workers.size(); i++) {
-        m_workers[i] = std::jthread{[&] {
-            std::random_device randomDev;
-            std::default_random_engine randomEngine;
-            std::uniform_int_distribution<size_t> intDist;
-            std::uniform_real_distribution<float> pctDist;
-            Context ctx;
+        /*m_workerStates[i].randomGenerationWeight = 1.0f + i * 0.5f;
+        m_workerStates[i].crossoverPopWeight = 5.0f + i * 1.0f;
 
-            for (;;) {
-                m_semaphore.acquire();
-                if (!m_running) {
-                    break;
-                }
+        m_workerStates[i].randomMutationChance = 0.30f + i * 0.07f;
+        m_workerStates[i].spliceMutationChance = 0.05f + i * 0.01f;
+        m_workerStates[i].reverseMutationChance = 0.05f + i * 0.01f;
 
-                ProcessChromosomes(intDist, pctDist, ctx);
+        m_workerStates[i].geneEnablePct = 0.4f + i * 0.05f;
 
-                void(m_barrier.arrive());
+        m_workerStates[i].ComputeParameters();*/
+
+        m_workers[i] = std::jthread{[&, id = i] {
+            while (m_running) {
+                NextGeneration(id);
             }
         }};
     }
@@ -43,87 +30,99 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root)
 
 GAFuncSearch::~GAFuncSearch() {
     m_running = false;
-    m_semaphore.release(kWorkers);
 }
 
-void GAFuncSearch::NextGeneration() {
+void GAFuncSearch::NextGeneration(size_t workerId) {
+    auto &state = m_workerStates[workerId];
+
     // Selection
-    if (m_generation == 0) {
+    if (state.generation == 0) {
         // First run; initialize population
-        for (auto &chrom : m_population) {
-            NewChromosome(chrom);
+        for (auto &chrom : state.population) {
+            state.NewChromosome(chrom, m_templateOps);
         }
     } else {
-        // Elitist selection
-        // First m_elitistSelectionPct% entries will contain the best chromosomes
-        std::sort(m_population.begin(), m_population.end());
-        /*
-        // Random selection
-        // Next m_randomSelectionPct% entries will contain randomly selected entries
-        std::shuffle(m_population.begin() + m_randomIndexStart, m_population.end(), m_randomEngine);
-
-        // Random generation
-        // Next m_randomGenerationPct% entries will contain randomly generated entries
-        for (size_t i = m_randomGenStart; i < m_crossoverStart; i++) {
-            NewChromosome(m_population[i]);
+        // Replace weakest chromosomes with shared ones
+        for (size_t i = 0; i < kWorkers; i++) {
+            state.population[state.population.size() - i - 1] =
+                m_sharedStates[i].population[!m_sharedStates[i].popBufferFlip];
         }
+    }
 
-        // Crossover
-        // Remaining population will contain entries generated via crossover of two randomly selected parents from the
-        // above sections
-        for (size_t i = m_crossoverStart; i < m_population.size(); i++) {
-            if (m_pctDist(m_randomEngine) < 0.5f) {
-                OnePointCrossover(m_population[i], 0, m_crossoverStart - 1);
-            } else {
-                RandomCrossover(m_population[i], 0, m_crossoverStart - 1);
+    // Crossover, mutation and fitness evaluation
+    for (size_t idx = 0; idx < state.population.size(); idx++) {
+        auto &chrom = state.population[idx];
+        if (idx >= state.randomGenStart && idx < state.crossoverStart) {
+            state.NewChromosome(chrom, m_templateOps);
+        } else {
+            if (idx >= state.crossoverStart) {
+                if (state.pctDist(state.randomEngine) < 0.5f) {
+                    state.OnePointCrossover(chrom, 0, state.crossoverStart - 1);
+                } else {
+                    state.RandomCrossover(chrom, 0, state.crossoverStart - 1);
+                }
+                state.RandomizeGenes(chrom, m_templateOps);
+                state.SpliceGenes(chrom);
+                state.ReverseGenes(chrom);
             }
-        }*/
+        }
+        state.EvaluateFitness(chrom, m_fixedDataPoints);
+        if (chrom.fitness == 0) {
+            Stop();
+        }
     }
 
-    m_nextChromosome = 0;
-    m_semaphore.release(kWorkers);
+    // Share best chromosomes
+    auto &shared = m_sharedStates[workerId];
+    std::sort(state.population.begin(), state.population.end());
+    shared.population[shared.popBufferFlip] = state.population[0];
+    shared.popBufferFlip = !shared.popBufferFlip;
 
-    if constexpr (kWorkOnMainThread) {
-        ProcessChromosomes(m_intDist, m_pctDist, m_ctx);
-    }
-
-    m_barrier.arrive_and_wait();
-
-    m_generation++;
+    state.generation++;
 }
 
-void GAFuncSearch::NewChromosome(Chromosome &chrom) {
+void GAFuncSearch::WorkerState::ComputeParameters() {
+    rcpTotalWeights = 1.0f / (eliteSelectionWeight + randomGenerationWeight + crossoverPopWeight);
+    eliteSelectionPct = eliteSelectionWeight * rcpTotalWeights;
+    randomGenerationPct = randomGenerationWeight * rcpTotalWeights;
+    // crossoverPopPct = crossoverPopWeight * rcpTotalWeights;
+
+    randomGenStart = population.size() * eliteSelectionPct + 0.5f;
+    crossoverStart = population.size() * (eliteSelectionPct + randomGenerationPct) + 0.5f;
+}
+
+void GAFuncSearch::WorkerState::NewChromosome(Chromosome &chrom, const std::vector<Operation> &templateOps) {
     // TODO: implement other forms of gene generation
     // - random splicing of small chunks of "sensible" code
     // - incremental sequence (same as brute-force)
     for (auto &gene : chrom.genes) {
-        NewGene(gene);
+        NewGene(gene, templateOps);
     }
 }
 
-void GAFuncSearch::OnePointCrossover(Chromosome &chrom, size_t first, size_t last) {
+void GAFuncSearch::WorkerState::OnePointCrossover(Chromosome &chrom, size_t first, size_t last) {
     std::uniform_int<size_t>::param_type popParam{first, last};
     std::uniform_int<size_t>::param_type geneParam{0, chrom.genes.size() - 1};
 
-    size_t firstParentIndex = m_intDist(m_randomEngine, popParam);
-    size_t secondParentIndex = m_intDist(m_randomEngine, popParam);
-    size_t crossoverPos = m_intDist(m_randomEngine, geneParam);
-    auto &firstParent = m_population[firstParentIndex];
-    auto &secondParent = m_population[secondParentIndex];
+    size_t firstParentIndex = intDist(randomEngine, popParam);
+    size_t secondParentIndex = intDist(randomEngine, popParam);
+    size_t crossoverPos = intDist(randomEngine, geneParam);
+    auto &firstParent = population[firstParentIndex];
+    auto &secondParent = population[secondParentIndex];
     std::copy_n(firstParent.genes.begin(), crossoverPos, chrom.genes.begin());
     std::copy(secondParent.genes.begin() + crossoverPos, secondParent.genes.end(), chrom.genes.begin() + crossoverPos);
 }
 
-void GAFuncSearch::RandomCrossover(Chromosome &chrom, size_t first, size_t last) {
+void GAFuncSearch::WorkerState::RandomCrossover(Chromosome &chrom, size_t first, size_t last) {
     std::uniform_int<size_t>::param_type popParam{first, last};
     std::uniform_int<size_t>::param_type geneParam{0, chrom.genes.size() - 1};
 
-    size_t firstParentIndex = m_intDist(m_randomEngine, popParam);
-    size_t secondParentIndex = m_intDist(m_randomEngine, popParam);
-    auto &firstParent = m_population[firstParentIndex];
-    auto &secondParent = m_population[secondParentIndex];
+    size_t firstParentIndex = intDist(randomEngine, popParam);
+    size_t secondParentIndex = intDist(randomEngine, popParam);
+    auto &firstParent = population[firstParentIndex];
+    auto &secondParent = population[secondParentIndex];
     for (size_t i = 0; i < chrom.genes.size(); i++) {
-        if (m_pctDist(m_randomEngine) < 0.5f) {
+        if (pctDist(randomEngine) < 0.5f) {
             chrom.genes[i] = firstParent.genes[i];
         } else {
             chrom.genes[i] = secondParent.genes[i];
@@ -131,36 +130,35 @@ void GAFuncSearch::RandomCrossover(Chromosome &chrom, size_t first, size_t last)
     }
 }
 
-void GAFuncSearch::NewGene(Gene &gene) {
-    gene.enabled = m_pctDist(m_randomEngine) < m_geneEnablePct;
+void GAFuncSearch::WorkerState::NewGene(Gene &gene, const std::vector<Operation> &templateOps) {
+    gene.enabled = pctDist(randomEngine) < geneEnablePct;
     if (gene.enabled) {
-        std::uniform_int<size_t>::param_type param{0, m_templateOps.size() - 1};
-        size_t index = m_intDist(m_randomEngine, param);
-        gene.op = m_templateOps[index];
+        std::uniform_int<size_t>::param_type param{0, templateOps.size() - 1};
+        size_t index = intDist(randomEngine, param);
+        gene.op = templateOps[index];
     }
 }
 
-void GAFuncSearch::RandomizeGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist) {
+void GAFuncSearch::WorkerState::RandomizeGenes(Chromosome &chrom, const std::vector<Operation> &templateOps) {
     for (auto &gene : chrom.genes) {
-        if (m_pctDist(m_randomEngine) < m_randomMutationChance) {
-            NewGene(gene);
+        if (pctDist(randomEngine) < randomMutationChance) {
+            NewGene(gene, templateOps);
         }
     }
 }
 
-void GAFuncSearch::SpliceGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist,
-                               std::uniform_int_distribution<size_t> &intDist) {
-    std::uniform_int<size_t>::param_type param{0, m_templateOps.size() - 1};
-    if (m_pctDist(m_randomEngine) < m_spliceMutationChance) {
-        size_t start = m_intDist(m_randomEngine, param);
-        size_t end = m_intDist(m_randomEngine, param);
-        size_t pos = m_intDist(m_randomEngine, param);
+void GAFuncSearch::WorkerState::SpliceGenes(Chromosome &chrom) {
+    std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
+    if (pctDist(randomEngine) < spliceMutationChance) {
+        size_t start = intDist(randomEngine, param);
+        size_t end = intDist(randomEngine, param);
+        size_t pos = intDist(randomEngine, param);
 
         if (start > end) {
             std::swap(start, end);
         }
         size_t count = end - start + 1;
-        pos = std::min(pos, m_templateOps.size() - 1 - (end - start));
+        pos = std::min(pos, chrom.genes.size() - 1 - (end - start));
 
         if (pos < start) {
             for (size_t i = 0; i < count; i++) {
@@ -174,12 +172,11 @@ void GAFuncSearch::SpliceGenes(Chromosome &chrom, std::uniform_real_distribution
     }
 }
 
-void GAFuncSearch::ReverseGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist,
-                                std::uniform_int_distribution<size_t> &intDist) {
-    std::uniform_int<size_t>::param_type param{0, m_templateOps.size() - 1};
-    if (m_pctDist(m_randomEngine) < m_reverseMutationChance) {
-        size_t start = m_intDist(m_randomEngine, param);
-        size_t end = m_intDist(m_randomEngine, param);
+void GAFuncSearch::WorkerState::ReverseGenes(Chromosome &chrom) {
+    std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
+    if (pctDist(randomEngine) < reverseMutationChance) {
+        size_t start = intDist(randomEngine, param);
+        size_t end = intDist(randomEngine, param);
 
         if (start > end) {
             std::swap(start, end);
@@ -188,11 +185,12 @@ void GAFuncSearch::ReverseGenes(Chromosome &chrom, std::uniform_real_distributio
     }
 }
 
-uint32_t GAFuncSearch::EvaluateFitness(Chromosome &chrom, Context &ctx) {
+uint32_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
+                                                    const std::vector<ExtDataPoint> &fixedDataPoints) {
     chrom.fitness = 0;
 
     // Evaluate against the fixed data set
-    for (auto &dataPoint : m_fixedDataPoints) {
+    for (auto &dataPoint : fixedDataPoints) {
         ctx.slope = dataPoint.slope;
         ctx.stack.clear();
         ctx.vars.Apply(dataPoint.dp, dataPoint.left);
@@ -208,14 +206,14 @@ uint32_t GAFuncSearch::EvaluateFitness(Chromosome &chrom, Context &ctx) {
             }
         }
         if (!valid || ctx.stack.empty()) {
-            chrom.fitness = std::numeric_limits<uint32_t>::max();
+            chrom.fitness = std::numeric_limits<uint64_t>::max();
             break;
         }
         i32 result = ctx.stack.back();
-        result &= 1023;
+        /*result &= 1023;
         if (!dataPoint.left) {
             result ^= 1023;
-        }
+        }*/
         chrom.fitness += std::abs(result - dataPoint.dp.expectedOutput);
     }
 
@@ -230,28 +228,4 @@ uint32_t GAFuncSearch::EvaluateFitness(Chromosome &chrom, Context &ctx) {
     //       - this is set to the current generation + some number of generations
     //       - the intention is to remove entries that haven't failed in a while for performance
     return chrom.fitness;
-}
-
-void GAFuncSearch::ProcessChromosomes(std::uniform_int_distribution<size_t> &intDist,
-                                      std::uniform_real_distribution<float> &pctDist, Context &ctx) {
-    // Crossover, mutation and fitness evaluation
-    size_t idx;
-    while ((idx = m_nextChromosome++) < m_population.size()) {
-        auto &chrom = m_population[idx];
-        if (idx >= m_randomGenStart && idx < m_crossoverStart) {
-            NewChromosome(chrom);
-        } else {
-            if (idx >= m_crossoverStart) {
-                if (m_pctDist(m_randomEngine) < 0.5f) {
-                    OnePointCrossover(chrom, 0, m_crossoverStart - 1);
-                } else {
-                    RandomCrossover(chrom, 0, m_crossoverStart - 1);
-                }
-                RandomizeGenes(chrom, pctDist);
-                SpliceGenes(chrom, pctDist, intDist);
-                ReverseGenes(chrom, pctDist, intDist);
-            }
-        }
-        EvaluateFitness(chrom, ctx);
-    }
 }

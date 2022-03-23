@@ -20,8 +20,9 @@ struct ExtDataPoint {
 // A specialized genetic algorithm for searching functions
 class GAFuncSearch {
 public:
-    static constexpr size_t kNumOps = 48;
-    static constexpr size_t kPopSize = 128;
+    static constexpr size_t kNumOps = 32;
+    static constexpr size_t kPopSize = 200;
+    static constexpr size_t kWorkers = 8;
 
     struct Gene {
         Operation op;
@@ -30,7 +31,7 @@ public:
 
     struct Chromosome {
         std::array<Gene, kNumOps> genes;
-        uint32_t fitness;
+        uint64_t fitness = std::numeric_limits<uint64_t>::max();
 
         bool operator<(const Chromosome &rhs) const {
             return fitness < rhs.fitness;
@@ -56,13 +57,28 @@ public:
     }
 
     uint64_t CurrGeneration() const {
-        return m_generation;
+        uint64_t gen = 0;
+        for (auto &state : m_workerStates) {
+            gen += state.generation;
+        }
+        return gen;
     }
 
-    void NextGeneration();
+    const Chromosome &BestChromosome() const {
+        const Chromosome *best = nullptr;
+        for (auto &state : m_sharedStates) {
+            if (best == nullptr || state.population[!state.popBufferFlip].fitness < best->fitness) {
+                best = &state.population[!state.popBufferFlip];
+            }
+        }
+        return *best;
+    }
 
-    const std::array<Chromosome, kPopSize> &Population() const {
-        return m_population;
+    void Stop() {
+        m_running = false;
+        for (auto &worker : m_workers) {
+            worker.join();
+        }
     }
 
     // TODO: serialize and deserialize state
@@ -70,66 +86,73 @@ public:
     // TODO: make GA parameters configurable
 
 private:
-    static constexpr size_t kWorkers = 5;
-    static constexpr bool kWorkOnMainThread = true;
-
     DataSet m_dataSet;
     std::vector<Operation> m_templateOps;
     std::vector<ExtDataPoint> m_fixedDataPoints;
 
     std::array<std::jthread, kWorkers> m_workers;
-    std::counting_semaphore<kWorkers> m_semaphore;
-    std::barrier<> m_barrier;
-    std::atomic_size_t m_nextChromosome;
     bool m_running = true;
-    Context m_ctx;
 
-    uint64_t m_generation = 0;
-    std::array<Chromosome, kPopSize> m_population;
+    void NextGeneration(size_t workerId);
 
-    // Random number generator
-    std::random_device m_randomDev;
-    std::default_random_engine m_randomEngine;
-    std::uniform_int_distribution<size_t> m_intDist;
-    std::uniform_real_distribution<float> m_pctDist;
-    std::uniform_int_distribution<size_t> m_popDist;
+    struct SharedState {
+        std::array<Chromosome, 2> population;
+        bool popBufferFlip = false;
+    };
+    std::array<SharedState, kWorkers> m_sharedStates;
 
-    // Selection parameters
-    float m_eliteSelectionWeight = 1.0f;
-    float m_randomGenerationWeight = 1.0f;
-    float m_crossoverPopWeight = 5.0f;
+    struct WorkerState {
+        WorkerState()
+            : randomEngine{randomDev()}
+            , popDist{0, population.size()} {}
 
-    // Mutation parameters
-    float m_randomMutationChance = 0.30f;
-    float m_spliceMutationChance = 0.05f;
-    float m_reverseMutationChance = 0.05f;
+        std::array<Chromosome, kPopSize> population;
+        uint64_t generation = 0;
 
-    // Gene parameters
-    float m_geneEnablePct = 0.5f;
+        Context ctx;
 
-    // Computed parameters
-    float m_rcpTotalWeights = 1.0f / (m_eliteSelectionWeight + m_randomGenerationWeight + m_crossoverPopWeight);
-    float m_eliteSelectionPct = m_eliteSelectionWeight * m_rcpTotalWeights;
-    float m_randomGenerationPct = m_randomGenerationWeight * m_rcpTotalWeights;
-    // float m_crossoverPopPct = m_crossoverPopWeight * m_rcpTotalWeights;
+        // Random number generator
+        std::random_device randomDev;
+        std::default_random_engine randomEngine;
+        std::uniform_int_distribution<size_t> intDist;
+        std::uniform_real_distribution<float> pctDist;
+        std::uniform_int_distribution<size_t> popDist;
 
-    size_t m_randomGenStart = m_population.size() * m_eliteSelectionPct + 0.5f;
-    size_t m_crossoverStart = m_population.size() * (m_eliteSelectionPct + m_randomGenerationPct) + 0.5f;
+        // Selection parameters
+        float eliteSelectionWeight = 1.0f;
+        float randomGenerationWeight = 1.0f;
+        float crossoverPopWeight = 5.0f;
 
-    void NewChromosome(Chromosome &chrom);
-    void OnePointCrossover(Chromosome &chrom, size_t first, size_t last);
-    void RandomCrossover(Chromosome &chrom, size_t first, size_t last);
+        // Mutation parameters
+        float randomMutationChance = 0.30f;
+        float spliceMutationChance = 0.05f;
+        float reverseMutationChance = 0.05f;
 
-    void NewGene(Gene &gene);
+        // Gene parameters
+        float geneEnablePct = 0.5f;
 
-    void RandomizeGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist);
-    void SpliceGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist,
-                     std::uniform_int_distribution<size_t> &intDist);
-    void ReverseGenes(Chromosome &chrom, std::uniform_real_distribution<float> pctDist,
-                      std::uniform_int_distribution<size_t> &intDist);
+        // Computed parameters
+        float rcpTotalWeights = 1.0f / (eliteSelectionWeight + randomGenerationWeight + crossoverPopWeight);
+        float eliteSelectionPct = eliteSelectionWeight * rcpTotalWeights;
+        float randomGenerationPct = randomGenerationWeight * rcpTotalWeights;
+        // float crossoverPopPct = crossoverPopWeight * rcpTotalWeights;
 
-    uint32_t EvaluateFitness(Chromosome &chrom, Context &ctx);
+        size_t randomGenStart = population.size() * eliteSelectionPct + 0.5f;
+        size_t crossoverStart = population.size() * (eliteSelectionPct + randomGenerationPct) + 0.5f;
 
-    void ProcessChromosomes(std::uniform_int_distribution<size_t> &intDist,
-                            std::uniform_real_distribution<float> &pctDist, Context &ctx);
+        void ComputeParameters();
+
+        void NewChromosome(Chromosome &chrom, const std::vector<Operation> &templateOps);
+        void OnePointCrossover(Chromosome &chrom, size_t first, size_t last);
+        void RandomCrossover(Chromosome &chrom, size_t first, size_t last);
+
+        void NewGene(Gene &gene, const std::vector<Operation> &templateOps);
+
+        void RandomizeGenes(Chromosome &chrom, const std::vector<Operation> &templateOps);
+        void SpliceGenes(Chromosome &chrom);
+        void ReverseGenes(Chromosome &chrom);
+
+        uint32_t EvaluateFitness(Chromosome &chrom, const std::vector<ExtDataPoint> &fixedDataPoints);
+    };
+    std::array<WorkerState, kWorkers> m_workerStates;
 };

@@ -161,23 +161,23 @@ int main() {
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushY});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushWidth});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushHeight});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushPositive});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushNegative});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushPositive});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushNegative});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushXMajor});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushYMajor});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushLeft});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushRight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushLeft});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushRight});
 
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Add});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Subtract});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Multiply});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Divide});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Modulo});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Not});
@@ -271,7 +271,7 @@ int main() {
     dataPoints.push_back(ExtDataPoint{
         .dp = {.x = 10, .y = 0, .width = 54, .height = 2, .expectedOutput = 12}, .left = true, .positive = true});*/
 
-    dataPoints.push_back({{0, 0, 205, 2, 4}, true, true});
+    /*dataPoints.push_back({{0, 0, 205, 2, 4}, true, true});
     dataPoints.push_back({{0, 1, 205, 2, 10}, true, true});
 
     dataPoints.push_back({{0, 0, 206, 2, 4}, true, true});
@@ -431,7 +431,47 @@ int main() {
     dataPoints.push_back({{0, 3, 217, 7, 16}, true, true});
     dataPoints.push_back({{0, 4, 217, 7, 16}, true, true});
     dataPoints.push_back({{0, 5, 217, 7, 16}, true, true});
-    dataPoints.push_back({{0, 6, 217, 7, 16}, true, true});
+    dataPoints.push_back({{0, 6, 217, 7, 16}, true, true});*/
+
+    dataPoints.push_back({{0, 0, 54, 2, 18}, true, true});
+    dataPoints.push_back({{4, 0, 54, 2, 18}, true, true});
+    dataPoints.push_back({{18, 0, 54, 2, 18}, true, true});
+    dataPoints.push_back({{26, 0, 54, 2, 18}, true, true});
+    dataPoints.push_back({{27, 1, 54, 2, 19}, true, true});
+    dataPoints.push_back({{33, 1, 54, 2, 19}, true, true});
+    dataPoints.push_back({{45, 1, 54, 2, 19}, true, true});
+    dataPoints.push_back({{53, 1, 54, 2, 19}, true, true});
+
+    dataPoints.push_back({{255, 0, 54, 2, 18}, false, false});
+    dataPoints.push_back({{250, 0, 54, 2, 18}, false, false});
+    dataPoints.push_back({{240, 0, 54, 2, 18}, false, false});
+    dataPoints.push_back({{229, 0, 54, 2, 18}, false, false});
+    dataPoints.push_back({{228, 1, 54, 2, 18}, false, false});
+    dataPoints.push_back({{220, 1, 54, 2, 18}, false, false});
+    dataPoints.push_back({{210, 1, 54, 2, 18}, false, false});
+    dataPoints.push_back({{202, 1, 54, 2, 18}, false, false});
+
+    dataPoints.push_back({{0, 0, 55, 2, 18}, true, true});
+    dataPoints.push_back({{28, 1, 55, 2, 36}, true, true});
+
+    dataPoints.push_back({{255, 0, 55, 2, 0}, false, false});
+    dataPoints.push_back({{227, 1, 55, 2, 18}, false, false});
+
+    dataPoints.push_back({{0, 0, 19, 1, 26}, true, true});
+
+    dataPoints.push_back({{0, 0, 103, 3, 14}, true, true});
+    dataPoints.push_back({{34, 1, 103, 3, 5}, true, true});
+    dataPoints.push_back({{69, 2, 103, 3, 24}, true, true});
+
+    dataPoints.push_back({{0, 0, 105, 3, 14}, true, true});
+    dataPoints.push_back({{35, 1, 105, 3, 14}, true, true});
+    dataPoints.push_back({{70, 2, 105, 3, 14}, true, true});
+
+    dataPoints.push_back({{116, 17, 233, 34, 0}, true, true});
+    dataPoints.push_back({{123, 18, 233, 34, 22}, true, true});
+
+    dataPoints.push_back({{0, 0, 62, 2, 16}, true, true});
+    dataPoints.push_back({{31, 1, 62, 2, 16}, true, true});
 
     using clk = std::chrono::steady_clock;
     using namespace std::chrono_literals;
@@ -439,32 +479,82 @@ int main() {
     GAFuncSearch ga{"E:/Development/_refs/NDS/Research/Antialiasing"};
     ga.SetTemplateOps(templateOps);
     ga.SetFixedDataPoints(dataPoints);
-    auto &pop = ga.Population();
+    auto updateInterval = 250ms;
     auto t = clk::now();
     auto ts = t;
+    auto tsleep = t + updateInterval;
     for (;;) {
-        ga.NextGeneration();
-        auto t2 = clk::now();
-        if (t2 - t >= 1s) {
-            t = t2;
-            const auto &best = std::min_element(pop.begin(), pop.end());
-            std::cout << "Generation " << ga.CurrGeneration() << ":\n";
-            std::cout << "  Speed: " << std::fixed << std::setprecision(2)
-                      << (double)ga.CurrGeneration() * 1000000000.0 /
-                             std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - ts).count()
-                      << " gens/sec\n";
-            std::cout << "  Best fitness: " << best->fitness << "\n";
-            std::cout << "  Function:";
-            for (auto &gene : best->genes) {
-                std::cout << ' ';
-                if (gene.enabled) {
-                    std::cout << gene.op.Str();
-                } else {
-                    std::cout << '-';
-                }
+        std::this_thread::sleep_until(tsleep);
+        tsleep += updateInterval;
+        t = clk::now();
+        const auto &best = ga.BestChromosome();
+        std::cout << "Generation " << ga.CurrGeneration() << ":\n";
+        std::cout << "  Speed: " << std::fixed << std::setprecision(2)
+                  << (double)ga.CurrGeneration() * 1000000000.0 /
+                         std::chrono::duration_cast<std::chrono::nanoseconds>(t - ts).count()
+                  << " gens/sec\n";
+        std::cout << "  Best fitness: " << best.fitness << "\n";
+        std::cout << "  Function:";
+        for (auto &gene : best.genes) {
+            std::cout << ' ';
+            if (gene.enabled) {
+                std::cout << gene.op.Str();
+            } else {
+                std::cout << '-';
             }
-            std::cout << "\n";
         }
+        std::cout << "\n";
+        if (best.fitness == 0) {
+            ga.Stop();
+            break;
+        }
+    }
+
+    std::cout << "----- Finished! -----\n";
+    const auto &best = ga.BestChromosome();
+    std::cout << "Generation " << ga.CurrGeneration() << ":\n";
+    std::cout << "  Speed: " << std::fixed << std::setprecision(2)
+              << (double)ga.CurrGeneration() * 1000000000.0 /
+                     std::chrono::duration_cast<std::chrono::nanoseconds>(t - ts).count()
+              << " gens/sec\n";
+    std::cout << "  Best fitness: " << best.fitness << "\n";
+    std::cout << "  Function:";
+    for (auto &gene : best.genes) {
+        std::cout << ' ';
+        if (gene.enabled) {
+            std::cout << gene.op.Str();
+        } else {
+            std::cout << '-';
+        }
+    }
+    std::cout << "\n";
+
+    Context ctx;
+    for (auto &dp : dataPoints) {
+        ctx.slope = dp.slope;
+        ctx.stack.clear();
+        ctx.vars.Apply(dp.dp, dp.left);
+
+        bool valid = true;
+        for (auto &gene : best.genes) {
+            if (!gene.enabled) {
+                continue;
+            }
+            if (!gene.op.Execute(ctx)) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid || ctx.stack.empty()) {
+            continue;
+        }
+        i32 result = ctx.stack.back();
+        /*result &= 1023;
+        if (!dataPoint.left) {
+            result ^= 1023;
+        }*/
+        std::cout << "   " << dp.dp.width << "x" << dp.dp.height << " @ " << dp.dp.x << "x" << dp.dp.y << "  " << result
+                  << " " << dp.dp.expectedOutput << "\n";
     }
 
     return EXIT_SUCCESS;
