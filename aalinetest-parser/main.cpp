@@ -1,6 +1,7 @@
 #include <bitset>
 #include <chrono>
 #include <iostream>
+#include <memory>
 #include <sstream>
 
 #include "dataset.h"
@@ -173,9 +174,9 @@ int main() {
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Multiply});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Divide});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Modulo});
-        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift});
-        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
@@ -184,9 +185,9 @@ int main() {
 
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Dup});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Swap});
-        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Drop});
-        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Rot});
-        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::RevRot});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Drop});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Rot});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::RevRot});
 
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXStart});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXEnd});
@@ -199,6 +200,7 @@ int main() {
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeight});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivWidth});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Mul2});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Div2});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::AAStep});
@@ -433,63 +435,101 @@ int main() {
     dataPoints.push_back({{0, 5, 217, 7, 16}, true, true});
     dataPoints.push_back({{0, 6, 217, 7, 16}, true, true});*/
 
-    dataPoints.push_back({{0, 0, 54, 2, 18}, true, true});
-    dataPoints.push_back({{4, 0, 54, 2, 18}, true, true});
-    dataPoints.push_back({{18, 0, 54, 2, 18}, true, true});
-    dataPoints.push_back({{26, 0, 54, 2, 18}, true, true});
-    dataPoints.push_back({{27, 1, 54, 2, 19}, true, true});
-    dataPoints.push_back({{33, 1, 54, 2, 19}, true, true});
-    dataPoints.push_back({{45, 1, 54, 2, 19}, true, true});
-    dataPoints.push_back({{53, 1, 54, 2, 19}, true, true});
+    // Sanity check
+    /*dataPoints.push_back({{0, 1, 2, 3, 5}, true, true});
+    dataPoints.push_back({{0, 1, 2, 5, 7}, true, true});
+    dataPoints.push_back({{0, 4, 2, 3, 20}, true, true});
+    dataPoints.push_back({{5, 1, 2, 3, 0}, true, true});
+    dataPoints.push_back({{2, 2, 2, 2, 6}, true, true});
+    dataPoints.push_back({{2, 2, 5, 2, 12}, true, true});
+    dataPoints.push_back({{2, 2, 7, 2, 16}, true, true});
+    dataPoints.push_back({{1, 3, 8, 9, 50}, true, true});*/
 
-    dataPoints.push_back({{255, 0, 54, 2, 18}, false, false});
-    dataPoints.push_back({{250, 0, 54, 2, 18}, false, false});
-    dataPoints.push_back({{240, 0, 54, 2, 18}, false, false});
-    dataPoints.push_back({{229, 0, 54, 2, 18}, false, false});
-    dataPoints.push_back({{228, 1, 54, 2, 18}, false, false});
-    dataPoints.push_back({{220, 1, 54, 2, 18}, false, false});
-    dataPoints.push_back({{210, 1, 54, 2, 18}, false, false});
-    dataPoints.push_back({{202, 1, 54, 2, 18}, false, false});
+    // TODO: allow specifying lower and upper bound for the result
+    // Bias
+    dataPoints.push_back({{0, 0, 54, 2, 18}, 18, true, true});
+    dataPoints.push_back({{4, 0, 54, 2, 18}, 18, true, true});
+    dataPoints.push_back({{18, 0, 54, 2, 18}, 18, true, true});
+    dataPoints.push_back({{26, 0, 54, 2, 18}, 18, true, true});
+    dataPoints.push_back({{27, 1, 54, 2, 19}, 19, true, true});
+    dataPoints.push_back({{33, 1, 54, 2, 19}, 19, true, true});
+    dataPoints.push_back({{45, 1, 54, 2, 19}, 19, true, true});
+    dataPoints.push_back({{53, 1, 54, 2, 19}, 19, true, true});
 
-    dataPoints.push_back({{0, 0, 55, 2, 18}, true, true});
-    dataPoints.push_back({{28, 1, 55, 2, 36}, true, true});
+    dataPoints.push_back({{255, 0, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{250, 0, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{240, 0, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{229, 0, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{228, 1, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{220, 1, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{210, 1, 54, 2, 18}, 18, false, false});
+    dataPoints.push_back({{202, 1, 54, 2, 18}, 18, false, false});
 
-    dataPoints.push_back({{255, 0, 55, 2, 0}, false, false});
-    dataPoints.push_back({{227, 1, 55, 2, 18}, false, false});
+    dataPoints.push_back({{0, 0, 55, 2, 18}, 18, true, true});
+    dataPoints.push_back({{28, 1, 55, 2, 36}, 36, true, true});
 
-    dataPoints.push_back({{0, 0, 19, 1, 26}, true, true});
+    dataPoints.push_back({{255, 0, 55, 2, 0}, 0, false, false});
+    dataPoints.push_back({{227, 1, 55, 2, 18}, 18, false, false});
 
-    dataPoints.push_back({{0, 0, 103, 3, 14}, true, true});
-    dataPoints.push_back({{34, 1, 103, 3, 5}, true, true});
-    dataPoints.push_back({{69, 2, 103, 3, 24}, true, true});
+    dataPoints.push_back({{0, 0, 19, 1, 26}, 26, true, true});
 
-    dataPoints.push_back({{0, 0, 105, 3, 14}, true, true});
-    dataPoints.push_back({{35, 1, 105, 3, 14}, true, true});
-    dataPoints.push_back({{70, 2, 105, 3, 14}, true, true});
+    dataPoints.push_back({{0, 0, 103, 3, 14}, 14, true, true});
+    dataPoints.push_back({{34, 1, 103, 3, 5}, 5, true, true});
+    dataPoints.push_back({{69, 2, 103, 3, 24}, 24, true, true});
 
-    dataPoints.push_back({{116, 17, 233, 34, 0}, true, true});
-    dataPoints.push_back({{123, 18, 233, 34, 22}, true, true});
+    dataPoints.push_back({{0, 0, 105, 3, 14}, 14, true, true});
+    dataPoints.push_back({{35, 1, 105, 3, 14}, 14, true, true});
+    dataPoints.push_back({{70, 2, 105, 3, 14}, 14, true, true});
 
-    dataPoints.push_back({{0, 0, 62, 2, 16}, true, true});
-    dataPoints.push_back({{31, 1, 62, 2, 16}, true, true});
+    dataPoints.push_back({{116, 17, 233, 34, 0}, 0, true, true});
+    dataPoints.push_back({{123, 18, 233, 34, 22}, 22, true, true});
 
-    dataPoints.push_back({{23, 1, 70, 3, 7}, true, true});
-    dataPoints.push_back({{47, 2, 70, 3, 36}, true, true});
+    dataPoints.push_back({{0, 0, 62, 2, 16}, 16, true, true});
+    dataPoints.push_back({{31, 1, 62, 2, 16}, 16, true, true});
+
+    dataPoints.push_back({{23, 1, 70, 3, 7}, 7, true, true});
+    dataPoints.push_back({{47, 2, 70, 3, 36}, 36, true, true});
+
+    dataPoints.push_back({{0, 0, 2, 1, 256}, 287, true, true});
+
+    dataPoints.push_back({{0, 0, 7, 1, 70}, 73, true, true});
+
+    dataPoints.push_back({{0, 0, 6, 2, 160}, 170, true, true});
+    dataPoints.push_back({{3, 1, 6, 2, 160}, 170, true, true});
+
+    dataPoints.push_back({{0, 0, 245, 192, 384}, 415, true, true});
+    dataPoints.push_back({{1, 1, 245, 192, 160}, 189, true, true});
+    dataPoints.push_back({{2, 1, 245, 192, 160}, 189, true, true});
+    dataPoints.push_back({{3, 2, 245, 192, 736}, 767, true, true});
+    dataPoints.push_back({{4, 3, 245, 192, 512}, 543, true, true});
+
+    dataPoints.push_back({{196, 154, 245, 192, 0}, 29, true, true});
+    dataPoints.push_back({{197, 154, 245, 192, 0}, 29, true, true});
+
+    for (auto &dp : dataPoints) {
+        if (dp.positive) {
+            dp.slope.Setup(0, 0, dp.dp.width, dp.dp.height, dp.left);
+        } else {
+            dp.slope.Setup(dp.dp.width, 0, 0, dp.dp.height, dp.left);
+        }
+    }
 
     using clk = std::chrono::steady_clock;
     using namespace std::chrono_literals;
 
-    GAFuncSearch ga{"E:/Development/_refs/NDS/Research/Antialiasing"};
+    Context ctx;
+
+    auto pga = std::make_unique<GAFuncSearch>("E:/Development/_refs/NDS/Research/Antialiasing");
+    auto &ga = *pga;
     ga.SetTemplateOps(templateOps);
     ga.SetFixedDataPoints(dataPoints);
+
     auto updateInterval = 250ms;
     auto t = clk::now();
     auto ts = t;
     auto tsleep = t + updateInterval;
-    for (;;) {
-        std::this_thread::sleep_until(tsleep);
-        tsleep += updateInterval;
-        t = clk::now();
+
+    auto printBest = [&](bool showAllResults) {
         const auto &best = ga.BestChromosome();
         std::cout << "Generation " << ga.CurrGeneration() << ":\n";
         std::cout << "  Speed: " << std::fixed << std::setprecision(2)
@@ -507,6 +547,46 @@ int main() {
             }
         }
         std::cout << "\n";
+
+        for (auto &dp : dataPoints) {
+            ctx.slope = dp.slope;
+            ctx.stack.clear();
+            ctx.vars.Apply(dp.dp, dp.left);
+
+            bool valid = true;
+            for (auto &gene : best.genes) {
+                if (!gene.enabled) {
+                    continue;
+                }
+                if (!gene.op.Execute(ctx)) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (!valid || ctx.stack.empty()) {
+                continue;
+            }
+            i32 result = ctx.stack.back();
+            /*result &= 1023;
+            if (!dataPoint.left) {
+                result ^= 1023;
+            }*/
+            if (showAllResults || result < dp.dp.expectedOutput || result > dp.upperBound) {
+                std::cout << "   " << dp.dp.width << "x" << dp.dp.height << " @ " << dp.dp.x << "x" << dp.dp.y << "  "
+                          << result << " " << dp.dp.expectedOutput << ".." << dp.upperBound << "\n";
+            }
+        }
+    };
+
+    for (;;) {
+        std::this_thread::sleep_until(tsleep);
+        // ga.NextGeneration();
+        t = clk::now();
+        if (t >= tsleep) {
+            tsleep += updateInterval;
+            printBest(false);
+        }
+        const auto &best = ga.BestChromosome();
         if (best.fitness == 0) {
             ga.Stop();
             break;
@@ -514,51 +594,7 @@ int main() {
     }
 
     std::cout << "----- Finished! -----\n";
-    const auto &best = ga.BestChromosome();
-    std::cout << "Generation " << ga.CurrGeneration() << ":\n";
-    std::cout << "  Speed: " << std::fixed << std::setprecision(2)
-              << (double)ga.CurrGeneration() * 1000000000.0 /
-                     std::chrono::duration_cast<std::chrono::nanoseconds>(t - ts).count()
-              << " gens/sec\n";
-    std::cout << "  Best fitness: " << best.fitness << "\n";
-    std::cout << "  Function:";
-    for (auto &gene : best.genes) {
-        std::cout << ' ';
-        if (gene.enabled) {
-            std::cout << gene.op.Str();
-        } else {
-            std::cout << '-';
-        }
-    }
-    std::cout << "\n";
-
-    Context ctx;
-    for (auto &dp : dataPoints) {
-        ctx.slope = dp.slope;
-        ctx.stack.clear();
-        ctx.vars.Apply(dp.dp, dp.left);
-
-        bool valid = true;
-        for (auto &gene : best.genes) {
-            if (!gene.enabled) {
-                continue;
-            }
-            if (!gene.op.Execute(ctx)) {
-                valid = false;
-                break;
-            }
-        }
-        if (!valid || ctx.stack.empty()) {
-            continue;
-        }
-        i32 result = ctx.stack.back();
-        /*result &= 1023;
-        if (!dataPoint.left) {
-            result ^= 1023;
-        }*/
-        std::cout << "   " << dp.dp.width << "x" << dp.dp.height << " @ " << dp.dp.x << "x" << dp.dp.y << "  " << result
-                  << " " << dp.dp.expectedOutput << "\n";
-    }
+    printBest(true);
 
     return EXIT_SUCCESS;
 }

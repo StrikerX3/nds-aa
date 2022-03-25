@@ -12,6 +12,7 @@
 
 struct ExtDataPoint {
     DataPoint dp;
+    i32 upperBound;
     bool left;
     bool positive;
     Slope slope;
@@ -20,9 +21,9 @@ struct ExtDataPoint {
 // A specialized genetic algorithm for searching functions
 class GAFuncSearch {
 public:
-    static constexpr size_t kNumOps = 48;
-    static constexpr size_t kPopSize = 150;
-    static constexpr size_t kWorkers = 8;
+    static constexpr size_t kNumOps = 64;
+    static constexpr size_t kPopSize = 256;
+    static constexpr size_t kWorkers = 6;
 
     struct Gene {
         Operation op;
@@ -152,7 +153,7 @@ private:
         void SpliceGenes(Chromosome &chrom);
         void ReverseGenes(Chromosome &chrom);
 
-        uint32_t EvaluateFitness(Chromosome &chrom, const std::vector<ExtDataPoint> &fixedDataPoints);
+        uint64_t EvaluateFitness(Chromosome &chrom, const std::vector<ExtDataPoint> &fixedDataPoints);
     };
     std::array<WorkerState, kWorkers> m_workerStates;
 };

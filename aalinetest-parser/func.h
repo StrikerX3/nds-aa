@@ -60,6 +60,7 @@ enum class Operator {
     MulHeight,
     DivWidth,
     DivHeight,
+    Mul2,
     Div2,
     MulHeightDivWidthAA,
     AAStep,
@@ -109,6 +110,7 @@ constexpr Operator kOperators[] = {
     Operator::MulHeight,
     Operator::DivWidth,
     Operator::DivHeight,
+    Operator::Mul2,
     Operator::Div2,
     Operator::MulHeightDivWidthAA,
     Operator::AAStep,
@@ -159,6 +161,7 @@ inline std::string OperatorName(Operator op) {
     case Operator::MulHeight: return "mul_height";
     case Operator::DivWidth: return "div_width";
     case Operator::DivHeight: return "div_height";
+    case Operator::Mul2: return "mul_2";
     case Operator::Div2: return "div_2";
     case Operator::MulHeightDivWidthAA: return "mul_height_div_width_aa";
     case Operator::AAStep: return "push_aa_step";
@@ -378,15 +381,15 @@ private:
             stack.push_back(ctx.slope.XEnd(ctx.vars.y) - ctx.slope.XStart(ctx.vars.y) + 1);
             return true;
 
-        case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return (x * 32) << Slope::kAAFracBits; });
+        case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return x * Slope::kAAFracRange; });
         case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
         case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
         case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / ctx.vars.width; });
         case Operator::DivHeight: return unaryFunc([&](i32 x) { return x / ctx.vars.height; });
+        case Operator::Mul2: return unaryFunc([&](i32 x) { return x << 1; });
         case Operator::Div2: return unaryFunc([&](i32 x) { return x >> 1; });
         case Operator::MulHeightDivWidthAA:
-            return unaryFunc(
-                [&](i32 x) { return ((x * ctx.vars.height * 32) << Slope::kAAFracBits) / ctx.vars.width; });
+            return unaryFunc([&](i32 x) { return x * ctx.vars.height * Slope::kAAFracRange / ctx.vars.width; });
         case Operator::AAStep: stack.push_back(ctx.vars.height * Slope::kAAFracRange / ctx.vars.width); return true;
         }
         return false;

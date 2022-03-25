@@ -9,12 +9,13 @@ GAFuncSearch::GAFuncSearch(std::filesystem::path root) {
     // - div_2 - - add - add
 
     for (size_t i = 0; i < m_workers.size(); i++) {
-        /*m_workerStates[i].randomGenerationWeight = 1.0f + i * 0.5f;
-        m_workerStates[i].crossoverPopWeight = 5.0f + i * 1.0f;*/
+        // m_workerStates[i].randomGenerationWeight = 1.0f + i * 0.5f;
+        // m_workerStates[i].crossoverPopWeight = 5.0f + i * 1.0f;
 
         m_workerStates[i].randomMutationChance = 0.10f + i * 0.15f;
-        m_workerStates[i].spliceMutationChance = 0.05f + i * 0.01f;
-        m_workerStates[i].reverseMutationChance = 0.05f + i * 0.01f;
+        m_workerStates[i].spliceMutationChance = 0.05f + i * 0.10f;
+        // m_workerStates[i].reverseMutationChance = 0.05f + i * 0.01f;
+        m_workerStates[i].reverseMutationChance = 0.0f;
 
         // m_workerStates[i].geneEnablePct = 0.4f + i * 0.1f;
 
@@ -68,13 +69,13 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
 
         state.EvaluateFitness(chrom, m_fixedDataPoints);
         if (chrom.fitness == 0) {
-            Stop();
+            m_running = false;
         }
     }
 
     // Share best chromosomes
-    auto &shared = m_sharedStates[workerId];
     std::sort(state.population.begin(), state.population.end());
+    auto &shared = m_sharedStates[workerId];
     shared.population[shared.popBufferFlip] = state.population[0];
     shared.popBufferFlip = !shared.popBufferFlip;
 
@@ -185,7 +186,7 @@ void GAFuncSearch::WorkerState::ReverseGenes(Chromosome &chrom) {
     }
 }
 
-uint32_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
+uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
                                                     const std::vector<ExtDataPoint> &fixedDataPoints) {
     chrom.fitness = 0;
 
@@ -214,7 +215,15 @@ uint32_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
         if (!dataPoint.left) {
             result ^= 1023;
         }*/
-        chrom.fitness += std::abs(result - dataPoint.dp.expectedOutput);
+
+        if (result < dataPoint.dp.expectedOutput) {
+            chrom.fitness += (i64)dataPoint.dp.expectedOutput - result;
+        } else if (result > dataPoint.upperBound) {
+            chrom.fitness += (i64)result - dataPoint.upperBound;
+        }
+        /*if (result < dataPoint.dp.expectedOutput || result > dataPoint.upperBound) {
+            chrom.fitness++;
+        }*/
     }
 
     // TODO: evaluate against intelligently selected items from the data set
