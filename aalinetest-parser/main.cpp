@@ -1,15 +1,18 @@
-#include <bitset>
-#include <chrono>
-#include <iostream>
-#include <memory>
-#include <sstream>
-
 #include "dataset.h"
 #include "file.h"
 #include "func_generator.h"
 #include "func_search.h"
 #include "interactive_eval.h"
 #include "tester.h"
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+#include <bitset>
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <sstream>
 
 int main1() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
@@ -506,6 +509,69 @@ int main() {
     dataPoints.push_back({{196, 154, 245, 192, 0}, 29, true, true});
     dataPoints.push_back({{197, 154, 245, 192, 0}, 29, true, true});
 
+    dataPoints.push_back({{9, 7, 255, 192, 128}, 156, true, true});
+    dataPoints.push_back({{10, 7, 255, 192, 128}, 156, true, true});
+    dataPoints.push_back({{11, 8, 255, 192, 672}, 703, true, true});
+    dataPoints.push_back({{12, 9, 255, 192, 416}, 447, true, true});
+    dataPoints.push_back({{13, 10, 255, 192, 160}, 188, true, true});
+    dataPoints.push_back({{14, 10, 255, 192, 160}, 188, true, true});
+    dataPoints.push_back({{15, 11, 255, 192, 672}, 703, true, true});
+    dataPoints.push_back({{16, 12, 255, 192, 416}, 447, true, true});
+    dataPoints.push_back({{17, 13, 255, 192, 160}, 188, true, true});
+    dataPoints.push_back({{18, 13, 255, 192, 160}, 188, true, true});
+    dataPoints.push_back({{19, 14, 255, 192, 672}, 703, true, true});
+    dataPoints.push_back({{20, 15, 255, 192, 416}, 447, true, true});
+    dataPoints.push_back({{21, 16, 255, 192, 192}, 220, true, true});
+    dataPoints.push_back({{22, 16, 255, 192, 192}, 220, true, true});
+    dataPoints.push_back({{23, 17, 255, 192, 704}, 735, true, true});
+    dataPoints.push_back({{24, 18, 255, 192, 448}, 479, true, true});
+    dataPoints.push_back({{25, 19, 255, 192, 192}, 220, true, true});
+    dataPoints.push_back({{26, 19, 255, 192, 192}, 220, true, true});
+    dataPoints.push_back({{27, 20, 255, 192, 704}, 735, true, true});
+    dataPoints.push_back({{28, 21, 255, 192, 448}, 479, true, true});
+    dataPoints.push_back({{29, 22, 255, 192, 192}, 220, true, true});
+    dataPoints.push_back({{30, 22, 255, 192, 192}, 220, true, true});
+    dataPoints.push_back({{31, 23, 255, 192, 704}, 735, true, true});
+    dataPoints.push_back({{32, 24, 255, 192, 480}, 511, true, true});
+    dataPoints.push_back({{33, 25, 255, 192, 224}, 255, true, true});
+
+    // dataPoints.push_back({{3, 0, 150, 12, 39}, 40, true, true});
+    dataPoints.push_back({{4, 0, 150, 12, 39}, 40, true, true});
+    // dataPoints.push_back({{5, 0, 150, 12, 39}, 40, true, true});
+    // dataPoints.push_back({{16, 1, 150, 12, 0}, 4, true, true});
+    dataPoints.push_back({{17, 1, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{18, 1, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{31, 2, 150, 12, 41}, 42, true, true});
+    dataPoints.push_back({{32, 2, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{33, 2, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{42, 3, 150, 12, 0}, 4, true, true});
+    dataPoints.push_back({{43, 3, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{44, 3, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{56, 4, 150, 12, 41}, 42, true, true});
+    dataPoints.push_back({{57, 4, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{58, 4, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{70, 5, 150, 12, 0}, 4, true, true});
+    dataPoints.push_back({{71, 5, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{72, 5, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{81, 6, 150, 12, 41}, 42, true, true});
+    dataPoints.push_back({{82, 6, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{83, 6, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{91, 7, 150, 12, 0}, 4, true, true});
+    dataPoints.push_back({{92, 7, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{93, 7, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{106, 8, 150, 12, 41}, 42, true, true});
+    dataPoints.push_back({{107, 8, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{108, 8, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{116, 9, 150, 12, 0}, 4, true, true});
+    dataPoints.push_back({{117, 9, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{118, 9, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{131, 10, 150, 12, 41}, 42, true, true});
+    dataPoints.push_back({{132, 10, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{133, 10, 150, 12, 41}, 42, true, true});
+    // dataPoints.push_back({{143, 11, 150, 12, 0}, 4, true, true});
+    dataPoints.push_back({{144, 11, 150, 12, 0}, 4, true, true});
+    // dataPoints.push_back({{145, 11, 150, 12, 0}, 4, true, true});
+
     for (auto &dp : dataPoints) {
         if (dp.positive) {
             dp.slope.Setup(0, 0, dp.dp.width, dp.dp.height, dp.left);
@@ -529,14 +595,43 @@ int main() {
     auto ts = t;
     auto tsleep = t + updateInterval;
 
+    auto hndConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo = {.dwSize = 1, .bVisible = false};
+    SetConsoleCursorInfo(hndConsole, &cursorInfo);
+
+    COORD cursorPos = {.X = 0, .Y = 0};
+
+    auto newLine = [&] {
+        CONSOLE_SCREEN_BUFFER_INFO buf{};
+        GetConsoleScreenBufferInfo(hndConsole, &buf);
+        DWORD len = buf.dwSize.X - buf.dwCursorPosition.X + 1;
+        DWORD _;
+        FillConsoleOutputCharacter(hndConsole, ' ', len, buf.dwCursorPosition, &_);
+        std::cout << "\n";
+    };
+
+    auto blankBuffer = [&] {
+        CONSOLE_SCREEN_BUFFER_INFO buf{};
+        GetConsoleScreenBufferInfo(hndConsole, &buf);
+        DWORD len1 = buf.dwSize.X - buf.dwCursorPosition.X + 1;
+        DWORD lenRest = buf.dwSize.X * (buf.dwSize.Y - buf.dwCursorPosition.Y + 1);
+        DWORD _;
+        FillConsoleOutputCharacter(hndConsole, ' ', len1 + lenRest, buf.dwCursorPosition, &_);
+        std::cout << "\n";
+    };
+
     auto printBest = [&](bool showAllResults) {
+        SetConsoleCursorPosition(hndConsole, cursorPos);
         const auto &best = ga.BestChromosome();
-        std::cout << "Generation " << ga.CurrGeneration() << ":\n";
+        std::cout << "Generation " << ga.CurrGeneration() << ":";
+        newLine();
         std::cout << "  Speed: " << std::fixed << std::setprecision(2)
                   << (double)ga.CurrGeneration() * 1000000000.0 /
                          std::chrono::duration_cast<std::chrono::nanoseconds>(t - ts).count()
-                  << " gens/sec\n";
-        std::cout << "  Best fitness: " << best.fitness << "\n";
+                  << " gens/sec";
+        newLine();
+        std::cout << "  Best fitness: " << best.fitness;
+        newLine();
         std::cout << "  Function:";
         for (auto &gene : best.genes) {
             std::cout << ' ';
@@ -546,7 +641,7 @@ int main() {
                 std::cout << '-';
             }
         }
-        std::cout << "\n";
+        newLine();
 
         for (auto &dp : dataPoints) {
             ctx.slope = dp.slope;
@@ -573,9 +668,11 @@ int main() {
             }*/
             if (showAllResults || result < dp.dp.expectedOutput || result > dp.upperBound) {
                 std::cout << "   " << dp.dp.width << "x" << dp.dp.height << " @ " << dp.dp.x << "x" << dp.dp.y << "  "
-                          << result << " " << dp.dp.expectedOutput << ".." << dp.upperBound << "\n";
+                          << result << " " << dp.dp.expectedOutput << ".." << dp.upperBound;
+                newLine();
             }
         }
+        blankBuffer();
     };
 
     for (;;) {
