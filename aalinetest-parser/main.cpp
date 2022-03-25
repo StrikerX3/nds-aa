@@ -449,6 +449,12 @@ int main() {
     dataPoints.push_back({{1, 3, 8, 9, 50}, true, true});*/
 
     // Bias
+    // Best so far: fitness = 1
+    //  - - - push_x_start push_pos swap sub - - push_9 dup mul_width shl push_frac_x_end push_10 - - div push_4 - div
+    //  swap push_18 mul_2 mul - push_x_width push_right - - mul mul push_y mul_width mul_height_div_width_aa sub - -
+    //  div_2 - push_262144 - - push_frac_x_start - push_262143 mod - sub insert_aa_frac_bits add - - - - add
+    //  push_frac_x_width - - - - - div -
+
     dataPoints.push_back({{0, 0, 54, 2, 18}, 18, true, true});
     dataPoints.push_back({{4, 0, 54, 2, 18}, 18, true, true});
     dataPoints.push_back({{18, 0, 54, 2, 18}, 18, true, true});
@@ -618,7 +624,7 @@ int main() {
     ga.SetTemplateOps(templateOps);
     ga.SetFixedDataPoints(dataPoints);
 
-    auto updateInterval = 250ms;
+    auto updateInterval = 1000ms;
     auto t = clk::now();
     auto ts = t;
     auto tsleep = t + updateInterval;
@@ -700,6 +706,7 @@ int main() {
             }
         }
         blankBuffer();
+        SetConsoleCursorPosition(hndConsole, cursorPos);
     };
 
     for (;;) {
@@ -707,7 +714,11 @@ int main() {
         // ga.NextGeneration();
         t = clk::now();
         if (t >= tsleep) {
-            tsleep += updateInterval;
+            if (t >= tsleep + updateInterval) {
+                tsleep = t + updateInterval;
+            } else {
+                tsleep += updateInterval;
+            }
             printBest(false);
         }
         const auto &best = ga.BestChromosome();
