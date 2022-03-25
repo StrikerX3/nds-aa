@@ -597,7 +597,6 @@ int main() {
 
     auto hndConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_CURSOR_INFO cursorInfo = {.dwSize = 1, .bVisible = false};
-    SetConsoleCursorInfo(hndConsole, &cursorInfo);
 
     COORD cursorPos = {.X = 0, .Y = 0};
 
@@ -617,10 +616,10 @@ int main() {
         DWORD lenRest = buf.dwSize.X * (buf.dwSize.Y - buf.dwCursorPosition.Y + 1);
         DWORD _;
         FillConsoleOutputCharacter(hndConsole, ' ', len1 + lenRest, buf.dwCursorPosition, &_);
-        std::cout << "\n";
     };
 
     auto printBest = [&](bool showAllResults) {
+        SetConsoleCursorInfo(hndConsole, &cursorInfo);
         SetConsoleCursorPosition(hndConsole, cursorPos);
         const auto &best = ga.BestChromosome();
         std::cout << "Generation " << ga.CurrGeneration() << ":";
