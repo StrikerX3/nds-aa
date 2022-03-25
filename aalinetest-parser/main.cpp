@@ -448,7 +448,6 @@ int main() {
     dataPoints.push_back({{2, 2, 7, 2, 16}, true, true});
     dataPoints.push_back({{1, 3, 8, 9, 50}, true, true});*/
 
-    // TODO: allow specifying lower and upper bound for the result
     // Bias
     dataPoints.push_back({{0, 0, 54, 2, 18}, 18, true, true});
     dataPoints.push_back({{4, 0, 54, 2, 18}, 18, true, true});
@@ -475,6 +474,11 @@ int main() {
     dataPoints.push_back({{227, 1, 55, 2, 18}, 18, false, false});
 
     dataPoints.push_back({{0, 0, 19, 1, 26}, 26, true, true});
+
+    dataPoints.push_back({{23, 1, 57, 3, 26}, 26, true, true});
+    dataPoints.push_back({{24, 1, 57, 3, 26}, 26, true, true});
+    dataPoints.push_back({{25, 1, 57, 3, 26}, 26, true, true});
+    dataPoints.push_back({{26, 1, 57, 3, 26}, 26, true, true});
 
     dataPoints.push_back({{0, 0, 103, 3, 14}, 14, true, true});
     dataPoints.push_back({{34, 1, 103, 3, 5}, 5, true, true});
@@ -534,6 +538,30 @@ int main() {
     dataPoints.push_back({{31, 23, 255, 192, 704}, 735, true, true});
     dataPoints.push_back({{32, 24, 255, 192, 480}, 511, true, true});
     dataPoints.push_back({{33, 25, 255, 192, 224}, 255, true, true});
+    dataPoints.push_back({{200, 151, 255, 192, 32}, 60, true, true});
+    dataPoints.push_back({{201, 151, 255, 192, 32}, 60, true, true});
+    dataPoints.push_back({{244, 184, 255, 192, 96}, 124, true, true});
+    dataPoints.push_back({{245, 184, 255, 192, 96}, 124, true, true});
+
+    dataPoints.push_back({{102, 102, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{103, 103, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{104, 104, 186, 185, 928}, 959, true, true});
+    dataPoints.push_back({{105, 105, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{106, 106, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{107, 106, 186, 185, 928}, 959, true, true});
+    dataPoints.push_back({{108, 107, 186, 185, 928}, 959, true, true});
+    dataPoints.push_back({{109, 108, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{175, 174, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{176, 175, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{177, 176, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{178, 177, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{179, 178, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{180, 179, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{181, 180, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{182, 181, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{183, 182, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{184, 183, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{185, 184, 186, 185, 512}, 543, true, true});
 
     // dataPoints.push_back({{3, 0, 150, 12, 39}, 40, true, true});
     dataPoints.push_back({{4, 0, 150, 12, 39}, 40, true, true});
