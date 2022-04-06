@@ -33,6 +33,7 @@ public:
     struct Chromosome {
         std::array<Gene, kNumOps> genes;
         uint64_t fitness = std::numeric_limits<uint64_t>::max();
+        uint64_t generation;
 
         bool operator<(const Chromosome &rhs) const {
             return fitness < rhs.fitness;
@@ -58,11 +59,7 @@ public:
     }
 
     uint64_t CurrGeneration() const {
-        uint64_t gen = 0;
-        for (auto &state : m_workerStates) {
-            gen += state.generation;
-        }
-        return gen;
+        return m_generation;
     }
 
     const Chromosome &BestChromosome() const {
@@ -101,6 +98,7 @@ private:
         bool popBufferFlip = false;
     };
     std::array<SharedState, kWorkers> m_sharedStates;
+    std::atomic_uint64_t m_generation{0};
 
     struct WorkerState {
         WorkerState()
@@ -108,7 +106,6 @@ private:
             , popDist{0, population.size()} {}
 
         std::array<Chromosome, kPopSize> population;
-        uint64_t generation = 0;
 
         Context ctx;
 

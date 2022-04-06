@@ -656,14 +656,14 @@ int main() {
         SetConsoleCursorInfo(hndConsole, &cursorInfo);
         SetConsoleCursorPosition(hndConsole, cursorPos);
         const auto &best = ga.BestChromosome();
-        std::cout << "Generation " << ga.CurrGeneration() << ":";
+        auto duration = t - ts;
+        std::cout << "Generation " << ga.CurrGeneration();
+        std::cout << "    Time: " << std::fixed << std::setprecision(3)
+                  << (std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() / 1000.0) << " sec";
+        std::cout << "    Speed: " << std::fixed << std::setprecision(2)
+                  << (double)ga.CurrGeneration() * 1000000000.0 / duration.count() << " gens/sec";
         newLine();
-        std::cout << "  Speed: " << std::fixed << std::setprecision(2)
-                  << (double)ga.CurrGeneration() * 1000000000.0 /
-                         std::chrono::duration_cast<std::chrono::nanoseconds>(t - ts).count()
-                  << " gens/sec";
-        newLine();
-        std::cout << "  Best fitness: " << best.fitness;
+        std::cout << "  Best chromosome: fitness=" << best.fitness << ", generation=" << best.generation;
         newLine();
         std::cout << "  Function:";
         for (auto &gene : best.genes) {
@@ -700,8 +700,16 @@ int main() {
                 result ^= 1023;
             }*/
             if (showAllResults || result < dp.dp.expectedOutput || result > dp.upperBound) {
-                std::cout << "   " << dp.dp.width << "x" << dp.dp.height << " @ " << dp.dp.x << "x" << dp.dp.y << "  "
-                          << result << " " << dp.dp.expectedOutput << ".." << dp.upperBound;
+                std::cout << "   "                                              //
+                          << std::setw(3) << std::right << dp.dp.width          //
+                          << "x" << std::setw(3) << std::left << dp.dp.height   //
+                          << " @ "                                              //
+                          << std::setw(3) << std::right << dp.dp.x              //
+                          << "x" << std::setw(3) << std::left << dp.dp.y        //
+                          << "  "                                               //
+                          << std::setw(10) << std::right << result << " "       //
+                          << std::setw(4) << std::right << dp.dp.expectedOutput //
+                          << ".." << std::setw(4) << std::left << dp.upperBound;
                 newLine();
             }
         }

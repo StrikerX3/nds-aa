@@ -37,7 +37,7 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
     auto &state = m_workerStates[workerId];
 
     // Selection
-    if (state.generation == 0) {
+    if (m_generation == 0) {
         // First run; initialize population
         for (auto &chrom : state.population) {
             state.NewChromosome(chrom, m_templateOps);
@@ -49,6 +49,7 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
         auto &chrom = state.population[idx];
         if (idx >= state.randomGenStart && idx < state.crossoverStart) {
             state.NewChromosome(chrom, m_templateOps);
+            chrom.generation = m_generation;
         } else if (idx >= state.crossoverStart) {
             if (idx < state.crossoverStart + kWorkers) {
                 // Not 100% thread-safe... we'll get some crossovers for free
@@ -65,6 +66,7 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
                 state.SpliceGenes(chrom);
                 state.ReverseGenes(chrom);
             }
+            chrom.generation = m_generation;
         }
 
         state.EvaluateFitness(chrom, m_fixedDataPoints);
@@ -79,7 +81,7 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
     shared.population[shared.popBufferFlip] = state.population[0];
     shared.popBufferFlip = !shared.popBufferFlip;
 
-    state.generation++;
+    ++m_generation;
 }
 
 void GAFuncSearch::WorkerState::ComputeParameters() {
