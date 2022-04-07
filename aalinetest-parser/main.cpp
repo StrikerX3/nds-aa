@@ -183,14 +183,16 @@ int main() {
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Not});
 
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Dup});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Over});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Swap});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Drop});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Drop});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Rot});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::RevRot});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::IfElse});
 
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXStart});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXEnd});
@@ -198,11 +200,14 @@ int main() {
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XStart});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XEnd});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::X0});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeight});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivWidth});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Add1});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Sub1});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Mul2});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Div2});
         templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA});
@@ -707,6 +712,10 @@ int main() {
                           << std::setw(3) << std::right << dp.dp.x              //
                           << "x" << std::setw(3) << std::left << dp.dp.y        //
                           << "  "                                               //
+                          << (dp.slope.IsLeftEdge() ? 'L' : 'R')                //
+                          << (dp.slope.IsPositive() ? 'P' : 'N')                //
+                          << (dp.slope.IsXMajor() ? 'X' : 'Y')                  //
+                          << "  "                                               //
                           << std::setw(10) << std::right << result << " "       //
                           << std::setw(4) << std::right << dp.dp.expectedOutput //
                           << ".." << std::setw(4) << std::left << dp.upperBound;
@@ -714,7 +723,9 @@ int main() {
             }
         }
         blankBuffer();
-        SetConsoleCursorPosition(hndConsole, cursorPos);
+        if (!showAllResults) {
+            SetConsoleCursorPosition(hndConsole, cursorPos);
+        }
     };
 
     for (;;) {

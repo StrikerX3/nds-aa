@@ -98,8 +98,84 @@ void GAFuncSearch::WorkerState::NewChromosome(Chromosome &chrom, const std::vect
     // TODO: implement other forms of gene generation
     // - random splicing of small chunks of "sensible" code
     // - incremental sequence (same as brute-force)
-    for (auto &gene : chrom.genes) {
-        NewGene(gene, templateOps);
+    if (pctDist(randomEngine) < 0.999f) {
+        // Generate a completely new chromosome 99.9% of the time
+        for (auto &gene : chrom.genes) {
+            NewGene(gene, templateOps);
+        }
+    } else {
+        /*static constexpr std::array<Operation, 28> kFixedOperations{
+            Operation{.type = Operation::Type::Operator, .op = Operator::FracXEnd},
+            Operation{.type = Operation::Type::Constant, .constVal = 40},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Divide},
+            Operation{.type = Operation::Type::Constant, .constVal = 9},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Dup},
+            Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth},
+            Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift},
+            Operation{.type = Operation::Type::Constant, .constVal = 36},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Multiply},
+            Operation{.type = Operation::Type::Operator, .op = Operator::XWidth},
+            Operation{.type = Operation::Type::Operator, .op = Operator::PushRight},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Multiply},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Multiply},
+            Operation{.type = Operation::Type::Operator, .op = Operator::PushY},
+            Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth},
+            Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Subtract},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Div2},
+            Operation{.type = Operation::Type::Constant, .constVal = 262144},
+            Operation{.type = Operation::Type::Operator, .op = Operator::FracXStart},
+            Operation{.type = Operation::Type::Constant, .constVal = 262144},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Modulo},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Subtract},
+            Operation{.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Add},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Add},
+            Operation{.type = Operation::Type::Operator, .op = Operator::FracXWidth},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Divide},
+        };*/
+
+        static constexpr std::array<Operation, 16> kFixedOperations{
+            // const i32 startX = m_negative ? XEnd(y) : XStart(y);
+            Operation{.type = Operation::Type::Operator, .op = Operator::XStart},
+            Operation{.type = Operation::Type::Operator, .op = Operator::XEnd},
+            Operation{.type = Operation::Type::Operator, .op = Operator::PushNegative},
+            Operation{.type = Operation::Type::Operator, .op = Operator::IfElse},
+            // (neg ? xe : xs)
+
+            // const i32 xOffsetOrigin = m_negative ? startX - (m_x0 - m_width) : startX - m_x0;
+            Operation{.type = Operation::Type::Operator, .op = Operator::X0},
+            Operation{.type = Operation::Type::Operator, .op = Operator::PushWidth},
+            Operation{.type = Operation::Type::Operator, .op = Operator::PushNegative},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Multiply},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Subtract},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Subtract},
+            // (neg ? xe : xs) - (x0 - w*neg)
+
+            // const i32 coverageBias = ((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width);
+            Operation{.type = Operation::Type::Operator, .op = Operator::Mul2},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Add1},
+            Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA},
+            Operation{.type = Operation::Type::Operator, .op = Operator::Div2},
+            // (((neg ? xe : xs) - (x0 - w*neg)) * 2 + 1) * h*1024 / (w * 2)
+
+            Operation{.type = Operation::Type::Constant, .constVal = 1023},
+            Operation{.type = Operation::Type::Operator, .op = Operator::And},
+            // ((((neg ? xe : xs) - (x0 - w*neg)) * 2 + 1) * h*1024 / (w * 2)) & 1023
+        };
+
+        size_t spaces = chrom.genes.size() - kFixedOperations.size();
+        size_t templatePos = 0;
+        for (size_t i = 0; i < chrom.genes.size(); i++) {
+            double chanceForSpace = (double)spaces / chrom.genes.size();
+            if (templatePos == kFixedOperations.size() || pctDist(randomEngine) < chanceForSpace) {
+                chrom.genes[i].enabled = false;
+                spaces--;
+            } else {
+                chrom.genes[i].enabled = true;
+                chrom.genes[i].op = kFixedOperations[templatePos++];
+            }
+        }
     }
 }
 
@@ -193,6 +269,7 @@ uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
     chrom.fitness = 0;
 
     // Evaluate against the fixed data set
+    u64 numErrors = 1;
     for (auto &dataPoint : fixedDataPoints) {
         ctx.slope = dataPoint.slope;
         ctx.stack.clear();
@@ -220,13 +297,16 @@ uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
 
         if (result < dataPoint.dp.expectedOutput) {
             chrom.fitness += (i64)dataPoint.dp.expectedOutput - result;
+            numErrors++;
         } else if (result > dataPoint.upperBound) {
             chrom.fitness += (i64)result - dataPoint.upperBound;
+            numErrors++;
         }
         /*if (result < dataPoint.dp.expectedOutput || result > dataPoint.upperBound) {
             chrom.fitness++;
         }*/
     }
+    chrom.fitness *= numErrors;
 
     // TODO: evaluate against intelligently selected items from the data set
     // - intelligently select entries for the test set

@@ -53,7 +53,7 @@ public:
             if (dp.positive) {
                 dp.slope.Setup(0, 0, dp.dp.width, dp.dp.height, dp.left);
             } else {
-                dp.slope.Setup(dp.dp.width, 0, 0, dp.dp.height, dp.left);
+                dp.slope.Setup(255, 0, 255 - dp.dp.width, dp.dp.height, dp.left);
             }
         }
     }

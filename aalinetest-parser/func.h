@@ -42,10 +42,12 @@ enum class Operator {
     // Stack operators
 
     Dup,    // duplicates the top item
+    Over,   // duplicates the second item
     Swap,   // swaps the two top items
     Drop,   // discards the top item
     Rot,    // moves the top item to the Nth position, shifting items up
-    RevRot, // takes the Nth from the stack and moves it to the top, shifting items down
+    RevRot, // takes the Nth item from the stack and moves it to the top, shifting items down
+    IfElse, // takes 3 values; if top != 0, return second item, else return third item
 
     // Domain-specific operators
 
@@ -55,11 +57,14 @@ enum class Operator {
     XStart,
     XEnd,
     XWidth,
+    X0,
     InsertAAFracBits,
     MulWidth,
     MulHeight,
     DivWidth,
     DivHeight,
+    Add1,
+    Sub1,
     Mul2,
     Div2,
     MulHeightDivWidthAA,
@@ -94,10 +99,12 @@ constexpr Operator kOperators[] = {
     Operator::Not,
 
     Operator::Dup,
+    Operator::Over,
     Operator::Swap,
     Operator::Drop,
     Operator::Rot,
     Operator::RevRot,
+    Operator::IfElse,
 
     Operator::FracXStart,
     Operator::FracXEnd,
@@ -105,11 +112,14 @@ constexpr Operator kOperators[] = {
     Operator::XStart,
     Operator::XEnd,
     Operator::XWidth,
+    Operator::X0,
     Operator::InsertAAFracBits,
     Operator::MulWidth,
     Operator::MulHeight,
     Operator::DivWidth,
     Operator::DivHeight,
+    Operator::Add1,
+    Operator::Sub1,
     Operator::Mul2,
     Operator::Div2,
     Operator::MulHeightDivWidthAA,
@@ -145,10 +155,12 @@ inline std::string OperatorName(Operator op) {
     case Operator::Not: return "not";
 
     case Operator::Dup: return "dup";
+    case Operator::Over: return "over";
     case Operator::Swap: return "swap";
     case Operator::Drop: return "drop";
     case Operator::Rot: return "rot";
     case Operator::RevRot: return "rrot";
+    case Operator::IfElse: return "ifelse";
 
     case Operator::FracXStart: return "push_frac_x_start";
     case Operator::FracXEnd: return "push_frac_x_end";
@@ -156,11 +168,14 @@ inline std::string OperatorName(Operator op) {
     case Operator::XStart: return "push_x_start";
     case Operator::XEnd: return "push_x_end";
     case Operator::XWidth: return "push_x_width";
+    case Operator::X0: return "push_x0";
     case Operator::InsertAAFracBits: return "insert_aa_frac_bits";
     case Operator::MulWidth: return "mul_width";
     case Operator::MulHeight: return "mul_height";
     case Operator::DivWidth: return "div_width";
     case Operator::DivHeight: return "div_height";
+    case Operator::Add1: return "add_1";
+    case Operator::Sub1: return "sub_1";
     case Operator::Mul2: return "mul_2";
     case Operator::Div2: return "div_2";
     case Operator::MulHeightDivWidthAA: return "mul_height_div_width_aa";
@@ -325,6 +340,13 @@ private:
                 stack.push_back(stack.back());
                 return true;
             }
+        case Operator::Over:
+            if (stack.size() < 2) {
+                return false;
+            } else {
+                stack.push_back(stack[stack.size() - 2]);
+                return true;
+            }
         case Operator::Swap:
             if (stack.size() < 2) {
                 return false;
@@ -370,6 +392,19 @@ private:
                 std::rotate(&stack[stack.size() - count], &stack[stack.size() - count + 1], &stack[stack.size()]);
                 return true;
             }
+        case Operator::IfElse:
+            if (stack.size() < 3) {
+                return false;
+            } else {
+                i32 selector = stack.back();
+                stack.pop_back();
+                i32 first = stack.back();
+                stack.pop_back();
+                i32 second = stack.back();
+                stack.pop_back();
+                stack.push_back(selector ? first : second);
+                return true;
+            }
 
         case Operator::FracXStart: stack.push_back(ctx.slope.FracXStart(ctx.vars.y)); return true;
         case Operator::FracXEnd: stack.push_back(ctx.slope.FracXEnd(ctx.vars.y)); return true;
@@ -380,12 +415,15 @@ private:
         case Operator::XWidth:
             stack.push_back(ctx.slope.XEnd(ctx.vars.y) - ctx.slope.XStart(ctx.vars.y) + 1);
             return true;
+        case Operator::X0: stack.push_back(ctx.slope.X0()); return true;
 
         case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return x * Slope::kAAFracRange; });
         case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
         case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
         case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / ctx.vars.width; });
         case Operator::DivHeight: return unaryFunc([&](i32 x) { return x / ctx.vars.height; });
+        case Operator::Add1: return unaryFunc([&](i32 x) { return x + 1; });
+        case Operator::Sub1: return unaryFunc([&](i32 x) { return x - 1; });
         case Operator::Mul2: return unaryFunc([&](i32 x) { return x << 1; });
         case Operator::Div2: return unaryFunc([&](i32 x) { return x >> 1; });
         case Operator::MulHeightDivWidthAA:
