@@ -493,11 +493,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All X-major slopes
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = std::max<i32>(data.minX, y + 1); x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All Y-major slopes (except diagonals)
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
@@ -507,7 +507,7 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // testSlope(data, 8, 1, result);
-    testSlope(data, 175, 32, result);
+    // testSlope(data, 175, 32, result);
     // testSlope(data, 2, 1, result);
     // testSlope(data, 54, 2, result);
     // testSlope(data, 56, 2, result);
