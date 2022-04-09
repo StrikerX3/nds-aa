@@ -161,12 +161,19 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 }
 
                 // Display gradient
+                // std::cout << slope.Width() << ";" << slope.Height() << ';' //
+                //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
+                //           << (slope.IsPositive() ? 'P' : 'N')              //
+                //           << (slope.IsXMajor() ? 'X' : 'Y')                //
+                //           << ';' << y << ';';
                 std::cout << "    y=" << std::setw(3) << std::left << y << "  ";
                 std::cout << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left << endX
                           << " -> ";
                 if (biasLowerBound >= 1024) {
+                    // std::cout << ';';
                     std::cout << "(unexpected gradient)";
                 } else {
+                    // std::cout << biasLowerBound << ';' << biasUpperBound;
                     std::cout << std::setw(4) << std::right << biasLowerBound;
                     if (biasLowerBound != biasUpperBound) {
                         std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
@@ -468,7 +475,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
             }
         }
     };
-    // calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
+    calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
     calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
@@ -499,8 +506,10 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
         }
     }*/
 
-    testSlope(data, 2, 1, result);
-    testSlope(data, 54, 2, result);
+    // testSlope(data, 8, 1, result);
+    testSlope(data, 175, 32, result);
+    // testSlope(data, 2, 1, result);
+    // testSlope(data, 54, 2, result);
     // testSlope(data, 56, 2, result);
     // testSlope(data, 57, 3, result);
     // testSlope(data, 60, 3, result);

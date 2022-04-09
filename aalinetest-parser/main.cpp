@@ -14,7 +14,7 @@
 #include <memory>
 #include <sstream>
 
-int main1() {
+int main() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
@@ -137,7 +137,7 @@ int main4() {
 
 // --------------------------------------------------------------------------------
 
-int main() {
+int main5() {
     constexpr i32 kConstants[] = {
         0,
         1,

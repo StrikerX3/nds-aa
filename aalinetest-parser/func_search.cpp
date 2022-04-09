@@ -135,6 +135,12 @@ void GAFuncSearch::WorkerState::NewChromosome(Chromosome &chrom, const std::vect
             Operation{.type = Operation::Type::Operator, .op = Operator::Divide},
         };*/
 
+        // TODO: add this:
+        // push_1024 push_1023 mul_width shr push_x_start mod push_pos and push_x_start push_x_end push_neg ifelse
+        // push_x0 push_5 push_neg mul_width mul sub sub add_1 mul_height_div_width_aa push_aa_step div_2 sub push_1023
+        // sub_1 and push_1 push_y mul_height shl push_x_start push_aa_step xor push_2 xor add push_frac_x_end push_18
+        // and xor push_10 sub sub_1 sub_1 mod xor
+
         static constexpr std::array<Operation, 16> kFixedOperations{
             // const i32 startX = m_negative ? XEnd(y) : XStart(y);
             Operation{.type = Operation::Type::Operator, .op = Operator::XStart},
