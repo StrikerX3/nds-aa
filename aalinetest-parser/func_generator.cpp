@@ -1,5 +1,8 @@
 #include "func_generator.h"
 
+#include "dataset.h"
+
+#include <array>
 #include <chrono>
 #include <iostream>
 
@@ -92,4 +95,104 @@ void generateFunc(const std::vector<Operation> &templateOps, const std::vector<D
     } else {
         std::cout << "Could not find sequence of operations that matches the given data points\n";
     }
+}
+
+struct DFSFuncGenerator {
+    const std::vector<Operation> &templateOps;
+    DataSet dataSet;
+
+    static constexpr size_t kMaxOperations = 6;
+    static constexpr size_t kMaxStackSize = kMaxOperations; // current operations can add at most 1 item to the stack
+
+    FixedStack stack;
+    std::array<FixedStack, kMaxOperations> stackBackups;
+    std::array<Operation, kMaxOperations> formula;
+    size_t formulaLength;
+
+    struct PrecomputedDataPoint {
+        Slope slope;
+        Variables vars;
+        i32 expectedOutput;
+
+        PrecomputedDataPoint(const DataPoint &dp, bool left, bool positive)
+            : expectedOutput(dp.expectedOutput) {
+
+            if (positive) {
+                slope.Setup(0, 0, dp.width, dp.height, left);
+            } else {
+                slope.Setup(dp.width, 0, 0, dp.height, left);
+            }
+            vars.Apply(dp, left);
+        }
+    };
+    std::vector<PrecomputedDataPoint> precomputedDataPoints;
+
+    DFSFuncGenerator(const std::vector<Operation> &templateOps, std::filesystem::path datasetRoot)
+        : templateOps(templateOps)
+        , dataSet(loadXMajorDataSet(datasetRoot)) {
+        for (auto &dataPoint : dataSet.lpx) {
+            precomputedDataPoints.emplace_back(dataPoint, true, true);
+        }
+        for (auto &dataPoint : dataSet.lnx) {
+            precomputedDataPoints.emplace_back(dataPoint, true, false);
+        }
+        for (auto &dataPoint : dataSet.rpx) {
+            precomputedDataPoints.emplace_back(dataPoint, false, true);
+        }
+        for (auto &dataPoint : dataSet.rnx) {
+            precomputedDataPoints.emplace_back(dataPoint, false, false);
+        }
+    }
+
+    bool search() {
+        formulaLength = 0;
+        stack.clear();
+        return search(0);
+    }
+
+    bool search(size_t level) {
+        if (level == kMaxOperations) {
+            return false;
+        }
+        if (stack.size() > 3) {
+            // Can't possibly reduce the stack to 1 item at this point
+            return false;
+        }
+        stackBackups[level] = stack; // TODO: optimize stack handling
+        for (auto &op : templateOps) {
+#ifdef _DEBUG
+            formula[level] = op;
+            printf("testing formula:");
+            for (size_t i = 0; i <= level; i++) {
+                auto opStr = formula[i].Str();
+                printf(" %s", opStr.c_str());
+            }
+            printf("\n");
+#endif
+            bool allPass = true;
+            for (auto &dp : precomputedDataPoints) {
+                stack = stackBackups[level]; // TODO: optimize stack handling
+                if (!op.Execute(dp.slope, stack, dp.vars) || stack.size() != 1 || stack[0] != dp.expectedOutput) {
+                    allPass = false;
+                    break;
+                }
+            }
+            if (allPass || search(level + 1)) {
+                formula[level] = op;
+                formulaLength = std::max(formulaLength, level);
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+std::vector<Operation> generateFuncDFS(const std::vector<Operation> &templateOps, std::filesystem::path datasetRoot) {
+    auto dfs = std::make_unique<DFSFuncGenerator>(templateOps, datasetRoot);
+    std::vector<Operation> formula;
+    if (dfs->search()) {
+        formula.resize(dfs->formulaLength);
+        std::copy_n(dfs->formula.begin(), formula.size(), formula.begin());
+    }
+    return formula;
 }

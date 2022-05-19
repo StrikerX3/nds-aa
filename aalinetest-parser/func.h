@@ -239,6 +239,12 @@ struct FixedStack {
     const i32 *end() const {
         return &stack[pos];
     }
+
+    FixedStack &operator=(const FixedStack &rhs) {
+        pos = rhs.pos;
+        std::copy_n(rhs.stack.begin(), pos, stack.begin());
+        return *this;
+    }
 };
 
 struct Context {
@@ -271,16 +277,19 @@ struct Operation {
     }
 
     /*[[gnu::flatten]]*/ bool Execute(Context &ctx) const {
+        return Execute(ctx.slope, ctx.stack, ctx.vars);
+    }
+
+    /*[[gnu::flatten]]*/ bool Execute(Slope &slope, FixedStack &stack, Variables &vars) const {
         switch (type) {
-        case Type::Operator: return ExecuteOperator(ctx);
-        case Type::Constant: return ExecuteConstant(ctx);
+        case Type::Operator: return ExecuteOperator(slope, stack, vars);
+        case Type::Constant: return ExecuteConstant(stack);
         }
         return false;
     }
 
 private:
-    bool ExecuteOperator(Context &ctx) const {
-        auto &stack = ctx.stack;
+    bool ExecuteOperator(Slope &slope, FixedStack &stack, Variables &vars) const {
         auto binaryFunc = [&](auto &&func) -> bool {
             if (stack.size() < 2) {
                 return false;
@@ -306,16 +315,16 @@ private:
         };
 
         switch (op) {
-        case Operator::PushX: ctx.stack.push_back(ctx.vars.x); return true;
-        case Operator::PushY: ctx.stack.push_back(ctx.vars.y); return true;
-        case Operator::PushWidth: ctx.stack.push_back(ctx.vars.width); return true;
-        case Operator::PushHeight: ctx.stack.push_back(ctx.vars.height); return true;
-        case Operator::PushPositive: ctx.stack.push_back(!ctx.slope.IsNegative()); return true;
-        case Operator::PushNegative: ctx.stack.push_back(ctx.slope.IsNegative()); return true;
-        case Operator::PushXMajor: ctx.stack.push_back(ctx.slope.IsXMajor()); return true;
-        case Operator::PushYMajor: ctx.stack.push_back(!ctx.slope.IsXMajor()); return true;
-        case Operator::PushLeft: ctx.stack.push_back(ctx.vars.left); return true;
-        case Operator::PushRight: ctx.stack.push_back(!ctx.vars.left); return true;
+        case Operator::PushX: stack.push_back(vars.x); return true;
+        case Operator::PushY: stack.push_back(vars.y); return true;
+        case Operator::PushWidth: stack.push_back(vars.width); return true;
+        case Operator::PushHeight: stack.push_back(vars.height); return true;
+        case Operator::PushPositive: stack.push_back(!slope.IsNegative()); return true;
+        case Operator::PushNegative: stack.push_back(slope.IsNegative()); return true;
+        case Operator::PushXMajor: stack.push_back(slope.IsXMajor()); return true;
+        case Operator::PushYMajor: stack.push_back(!slope.IsXMajor()); return true;
+        case Operator::PushLeft: stack.push_back(vars.left); return true;
+        case Operator::PushRight: stack.push_back(!vars.left); return true;
 
         case Operator::Add: return binaryFunc([](i32 x, i32 y) { return x + y; });
         case Operator::Subtract: return binaryFunc([](i32 x, i32 y) { return x - y; });
@@ -406,35 +415,33 @@ private:
                 return true;
             }
 
-        case Operator::FracXStart: stack.push_back(ctx.slope.FracXStart(ctx.vars.y)); return true;
-        case Operator::FracXEnd: stack.push_back(ctx.slope.FracXEnd(ctx.vars.y)); return true;
-        case Operator::FracXWidth: stack.push_back(ctx.slope.DX()); return true;
+        case Operator::FracXStart: stack.push_back(slope.FracXStart(vars.y)); return true;
+        case Operator::FracXEnd: stack.push_back(slope.FracXEnd(vars.y)); return true;
+        case Operator::FracXWidth: stack.push_back(slope.DX()); return true;
 
-        case Operator::XStart: stack.push_back(ctx.slope.XStart(ctx.vars.y)); return true;
-        case Operator::XEnd: stack.push_back(ctx.slope.XEnd(ctx.vars.y)); return true;
-        case Operator::XWidth:
-            stack.push_back(ctx.slope.XEnd(ctx.vars.y) - ctx.slope.XStart(ctx.vars.y) + 1);
-            return true;
-        case Operator::X0: stack.push_back(ctx.slope.X0()); return true;
+        case Operator::XStart: stack.push_back(slope.XStart(vars.y)); return true;
+        case Operator::XEnd: stack.push_back(slope.XEnd(vars.y)); return true;
+        case Operator::XWidth: stack.push_back(slope.XEnd(vars.y) - slope.XStart(vars.y) + 1); return true;
+        case Operator::X0: stack.push_back(slope.X0()); return true;
 
         case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return x * Slope::kAAFracRange; });
-        case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * ctx.vars.width; });
-        case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * ctx.vars.height; });
-        case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / ctx.vars.width; });
-        case Operator::DivHeight: return unaryFunc([&](i32 x) { return x / ctx.vars.height; });
+        case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * vars.width; });
+        case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * vars.height; });
+        case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / vars.width; });
+        case Operator::DivHeight: return unaryFunc([&](i32 x) { return x / vars.height; });
         case Operator::Add1: return unaryFunc([&](i32 x) { return x + 1; });
         case Operator::Sub1: return unaryFunc([&](i32 x) { return x - 1; });
         case Operator::Mul2: return unaryFunc([&](i32 x) { return x << 1; });
         case Operator::Div2: return unaryFunc([&](i32 x) { return x >> 1; });
         case Operator::MulHeightDivWidthAA:
-            return unaryFunc([&](i32 x) { return x * ctx.vars.height * Slope::kAAFracRange / ctx.vars.width; });
-        case Operator::AAStep: stack.push_back(ctx.vars.height * Slope::kAAFracRange / ctx.vars.width); return true;
+            return unaryFunc([&](i32 x) { return x * vars.height * Slope::kAAFracRange / vars.width; });
+        case Operator::AAStep: stack.push_back(vars.height * Slope::kAAFracRange / vars.width); return true;
         }
         return false;
     }
 
-    bool ExecuteConstant(Context &ctx) const {
-        ctx.stack.push_back(constVal);
+    bool ExecuteConstant(FixedStack &stack) const {
+        stack.push_back(constVal);
         return true;
     }
 };

@@ -19,12 +19,12 @@ int main() {
     // uniqueColors("data/screencap.bin");
 
     auto dataT = readFile("E:/Development/_refs/NDS/Research/Antialiasing/T.bin");
-    auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
+    // auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
 
     if (dataT)
         test(*dataT);
-    if (dataB)
-        test(*dataB);
+    // if (dataB)
+    //     test(*dataB);
 
     // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
     // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
@@ -749,6 +749,100 @@ int main5() {
 
     std::cout << "----- Finished! -----\n";
     printBest(true);
+
+    return EXIT_SUCCESS;
+}
+
+// --------------------------------------------------------------------------------
+
+int main6() {
+    constexpr i32 kConstants[] = {
+        0,
+        1,
+        2,
+        3,
+        4,
+        Slope::kAARange,
+        Slope::kAARange - 1,
+        Slope::kAAFracBits,
+        Slope::kAAFracBits + 5,
+        Slope::kAAFracRange,
+        Slope::kAAFracRange - 1,
+        Slope::kFracBits,
+        Slope::kFracBits >> 1,
+        Slope::kOne,
+        Slope::kOne - 1,
+        Slope::kBias,
+    };
+    std::vector<Operation> templateOps;
+    {
+        for (i32 c : kConstants) {
+            templateOps.push_back(Operation{.type = Operation::Type::Constant, .constVal = c});
+        }
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushX});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushY});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushPositive});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushNegative});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushXMajor});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushYMajor});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushLeft});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::PushRight});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Add});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Subtract});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Multiply});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Divide});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Modulo});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Negate});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Not});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Dup});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Over});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Swap});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Drop});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Rot});
+        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::RevRot});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::IfElse});
+
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXStart});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXEnd});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::FracXWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XStart});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XEnd});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::XWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::X0});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::InsertAAFracBits});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivWidth});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::DivHeight});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Add1});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Sub1});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Mul2});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Div2});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::MulHeightDivWidthAA});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::AAStep});
+    }
+
+    auto formula = generateFuncDFS(templateOps, "E:/Development/_refs/NDS/Research/Antialiasing");
+    if (formula.empty()) {
+        printf("No valid formula found\n");
+    } else {
+        printf("Found valid formula:");
+        for (auto &op : formula) {
+            auto opStr = op.Str();
+            printf(" %s", opStr.c_str());
+        }
+        printf("\n");
+    }
 
     return EXIT_SUCCESS;
 }
