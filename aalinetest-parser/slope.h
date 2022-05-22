@@ -164,6 +164,42 @@ public:
         } else {
             m_dx *= kOne;
         }
+
+        // Compute antialiasing parameters
+        if (m_width == 0 || m_height == 0) {
+            m_covStep = 0;
+        } else if (m_xMajor) {
+            m_covStep = m_height * kAAFracRange / m_width;
+        } else {
+            m_covStep = m_width * kAAFracRange / m_height;
+        }
+
+        // Compensate for some off-by-one errors
+        m_covAdjust1 = m_covStep - (m_dx >> 8);
+        m_covAdjust2 = m_covAdjust1 & (~m_covStep & 1);
+
+        // Determine if the antialiasing coverage gradient should be inverted
+        // LR = m_leftEdge (false = R, true = L)
+        // PN = m_negative (false = P, true = N)
+        // XY = m_xMajor   (false = Y, true = X)
+        //
+        // normal:  RPY LPX LNY LNX
+        // inverse: RPX RNY RNX LPY
+        //                         LR!=(PN|XY)
+        // LR PN XY type inv PN|XY  LR^(PN|XY)
+        // -  -  -  RPY   -    -       -
+        // -  -  +  RPX   +    +       +
+        // -  +  -  RNY   +    +       +
+        // -  +  +  RNX   +    +       +
+        // +  -  -  LPY   +    -       +
+        // +  -  +  LPX   -    +       -
+        // +  +  -  LNY   -    +       -
+        // +  +  +  LNX   -    +       -
+        //
+        // Any of these matches our requirements:
+        //   LR ^ (PN | XY)
+        //   LR != (PN || XY)
+        m_covInverted = m_leftEdge != (m_negative || m_xMajor);
     }
 
     /// <summary>
@@ -337,27 +373,7 @@ public:
         //   - Negative gradient: zero coverage
 
         const auto invertGradient = [&](i32 coverage) -> i32 {
-            // LR = m_leftEdge (false = R, true = L)
-            // PN = m_negative (false = P, true = N)
-            // XY = m_xMajor   (false = Y, true = X)
-            //
-            // normal:  RPY LPX LNY LNX
-            // inverse: RPX RNY RNX LPY
-            //                         LR!=(PN|XY)
-            // LR PN XY type inv PN|XY  LR^(PN|XY)
-            // -  -  -  RPY   -    -       -
-            // -  -  +  RPX   +    +       +
-            // -  +  -  RNY   +    +       +
-            // -  +  +  RNX   +    +       +
-            // +  -  -  LPY   +    -       +
-            // +  -  +  LPX   -    +       -
-            // +  +  -  LNY   -    +       -
-            // +  +  +  LNX   -    +       -
-            //
-            // Any of these matches our requirements:
-            //   LR ^ (PN | XY)
-            //   LR != (PN || XY)
-            if (m_leftEdge != (m_negative || m_xMajor)) {
+            if (m_covInverted) {
                 coverage ^= kAAFracRange - 1;
             }
             return coverage;
@@ -394,9 +410,8 @@ public:
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 xOffsetOrigin = m_negative ? startX - (m_x0 - m_width) : startX - m_x0;
             const i32 xOffsetSegment = x - startX;
-            const i32 coverageStep = m_height * kAAFracRange / m_width;
             const i32 coverageBias = ((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width);
-            const i32 fracCoverage = xOffsetSegment * coverageStep;
+            const i32 fracCoverage = xOffsetSegment * m_covStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
 
             /*std::cout << "startX=" << std::setw(3) << std::left << startX                                     //
@@ -410,29 +425,29 @@ public:
         } else {
             const i32 fxs = (m_negative ? kOne - FracXStart(y) - 1 : FracXStart(y)) % kOne;
             const i32 baseCoverage = (fxs & kMask) >> 8;
-            const i32 coverageStep = m_width * kAAFracRange / m_height;
-            const i32 coverageBias = coverageStep / 2;
-            const i32 coverageAdjust = (m_dx >> 8) - coverageStep; // Compensate for some off-by-one errors
-            if (baseCoverage + coverageStep + coverageAdjust >= kAAFracRange) {
+            const i32 coverageBias = m_covStep / 2;
+            if (baseCoverage + m_covStep - m_covAdjust1 >= kAAFracRange) {
                 // Coverage is forced to maximum or minimum under this case
                 return invertGradient(kAAFracRange - 1);
             }
 
-            // This extra adjustment fixes some over-corrections
-            const i32 coverageAdjustExtra = ((coverageStep & 1) ^ 1);
-            const i32 finalCoverage = baseCoverage + coverageBias + coverageAdjust * coverageAdjustExtra;
+            const i32 finalCoverage = baseCoverage + coverageBias - m_covAdjust2;
             return invertGradient(finalCoverage);
         }
     }
 
 private:
-    i32 m_x0;        // X0 coordinate
-    i32 m_x0Frac;    // Fractional X0 coordinate (minus 1 if this is a negative slope)
-    i32 m_y0;        // Y0 coordinate
-    i32 m_width;     // Slope width (abs(X1 - X0))
-    i32 m_height;    // Slope height (abs(Y1 - Y0))
-    i32 m_dx;        // X displacement per scanline
-    bool m_negative; // True if the slope is negative (X1 < X0)
-    bool m_xMajor;   // True if the slope is X-major (X1-X0 > Y1-Y0)
-    bool m_leftEdge; // True if this is a left edge, false for a right edge
+    i32 m_x0;           // X0 coordinate
+    i32 m_x0Frac;       // Fractional X0 coordinate (minus 1 if this is a negative slope)
+    i32 m_y0;           // Y0 coordinate
+    i32 m_width;        // Slope width (abs(X1 - X0))
+    i32 m_height;       // Slope height (abs(Y1 - Y0))
+    i32 m_dx;           // X displacement per scanline
+    bool m_negative;    // True if the slope is negative (X1 < X0)
+    bool m_xMajor;      // True if the slope is X-major (X1-X0 > Y1-Y0)
+    bool m_leftEdge;    // True if this is a left edge, false for a right edge
+    i32 m_covStep;      // Antialiasing coverage step
+    i32 m_covAdjust1;   // Antialiasing coverage adjustment 1
+    i32 m_covAdjust2;   // Antialiasing coverage adjustment 2
+    bool m_covInverted; // True if the antialiasing coverage gradient is inverted
 };
