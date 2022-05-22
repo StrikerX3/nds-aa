@@ -69,7 +69,7 @@ enum class Operator {
     Div2,
     MulHeightDivWidthAA,
     AAStep,
-
+    And1,
 };
 
 constexpr Operator kOperators[] = {
@@ -124,7 +124,7 @@ constexpr Operator kOperators[] = {
     Operator::Div2,
     Operator::MulHeightDivWidthAA,
     Operator::AAStep,
-
+    Operator::And1,
 };
 
 inline std::string OperatorName(Operator op) {
@@ -180,6 +180,7 @@ inline std::string OperatorName(Operator op) {
     case Operator::Div2: return "div_2";
     case Operator::MulHeightDivWidthAA: return "mul_height_div_width_aa";
     case Operator::AAStep: return "push_aa_step";
+    case Operator::And1: return "and_1";
     }
     return "(invalid op)";
 }
@@ -436,6 +437,7 @@ private:
         case Operator::MulHeightDivWidthAA:
             return unaryFunc([&](i32 x) { return x * vars.height * Slope::kAAFracRange / vars.width; });
         case Operator::AAStep: stack.push_back(vars.height * Slope::kAAFracRange / vars.width); return true;
+        case Operator::And1: return unaryFunc([&](i32 x) { return x & 1; });
         }
         return false;
     }
