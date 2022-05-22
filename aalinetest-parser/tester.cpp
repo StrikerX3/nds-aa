@@ -75,7 +75,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     adjustY(rbStartY, rbEndY);
 
     // Dump gradients from the data set
-    auto dumpGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
+    /*auto dumpGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
         // Avoid division by zero.
         // Also, we're not interested in perfectly vertical or horizontal edges; those are solved already.
         if (slope.Width() == 0 || slope.Height() == 0) {
@@ -87,12 +87,12 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                                ? slope.Height() * 1024 / slope.Width()
                                : slope.Width() * 1024 / slope.Height();
 
-        /*std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left <<
-        slope.Height(); std::cout << "  aa step=" << aaStep; std::cout << "   "                            //
-                  << (slope.IsLeftEdge() ? 'L' : 'R') //
-                  << (slope.IsPositive() ? 'P' : 'N') //
-                  << (slope.IsXMajor() ? 'X' : 'Y')   //
-                  << '\n';*/
+        // std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left <<
+        // slope.Height(); std::cout << "  aa step=" << aaStep; std::cout << "   "                            //
+        //           << (slope.IsLeftEdge() ? 'L' : 'R') //
+        //           << (slope.IsPositive() ? 'P' : 'N') //
+        //           << (slope.IsXMajor() ? 'X' : 'Y')   //
+        //           << '\n';
 
         if (slope.IsXMajor()) {
             for (i32 y = startY; y < endY; y++) {
@@ -197,10 +197,10 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                     }
                 }
                 std::cout << (match ? " == " : " != ") << coverageBias;
-                /*std::cout << "  ";
-                for (i32 x = startX; x <= endX; x++) {
-                    std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
-                }*/
+                // std::cout << "  ";
+                // for (i32 x = startX; x <= endX; x++) {
+                //     std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
+                // }
                 std::cout << '\n';
             }
         } else { // Y-major or diagonal
@@ -311,8 +311,8 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
             }
         }
     };
-    // dumpGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
-    dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);
+    dumpGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
+    // dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);*/
 
     // Generate X-major gradients using the new bias method and compare against the data set
     /*auto calcGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
@@ -428,7 +428,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     calcGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);*/
 
     // Generate slopes and check the coverage values
-    /*auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY, i32 startY, i32 endY) {
+    auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY, i32 startY, i32 endY) {
         for (i32 y = startY; y < endY; y++) {
             i32 startX = slope.XStart(y);
             i32 endX = slope.XEnd(y);
@@ -492,7 +492,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
         }
     };
     calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);*/
+    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -509,17 +509,22 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All X-major slopes
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = std::max<i32>(data.minX, y + 1); x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All Y-major slopes (except diagonals)
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = data.minX; x <= std::min<i32>(data.maxX, y - 1); x++) {
             testSlope(data, x, y, result);
         }
+    }*/
+
+    // All diagonals
+    /*for (i32 i = std::max<i32>(data.minX, data.minY); i <= std::min<i32>(data.maxX, data.maxY); i++) {
+        testSlope(data, i, i, result);
     }*/
 
     // testSlope(data, 147, 2, result);
@@ -533,7 +538,10 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 62, 3, result);
     // testSlope(data, 150, 12, result);
     // testSlope(data, 250, 20, result);
-    testSlope(data, 186, 185, result);
+    // testSlope(data, 55, 2, result);
+    // testSlope(data, 103, 3, result);
+    // testSlope(data, 233, 34, result);
+    // testSlope(data, 186, 185, result);
     // testSlope(data, 245, 192, result);
     // testSlope(data, 255, 192, result);
 
