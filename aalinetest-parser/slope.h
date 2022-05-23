@@ -418,8 +418,10 @@ public:
                       << "  fxs=" << std::setw(10) << std::left << (m_negative ? FracXEnd(y) : FracXStart(y)) //
                       << "  xofs_origin=" << std::setw(3) << std::left << xOffsetOrigin                       //
                       << "  xofs_segment=" << std::setw(4) << std::left << xOffsetSegment                     //
-                      << "  step=" << std::setw(4) << std::left << coverageStep                               //
+                      << "  step=" << std::setw(4) << std::left << m_covStep                                  //
                       << "  bias=" << std::setw(6) << std::left << coverageBias                               //
+                      << "  adj1=" << m_covAdjust1                                                            //
+                      << "  adj2=" << m_covAdjust2                                                            //
                       << "   ";*/
             return invertGradient(finalCoverage);
         } else {
@@ -434,6 +436,10 @@ public:
             const i32 finalCoverage = baseCoverage + coverageBias - m_covAdjust2;
             return invertGradient(finalCoverage);
         }
+    }
+
+    bool IsCoverageInverted() const {
+        return m_covInverted;
     }
 
 private:
