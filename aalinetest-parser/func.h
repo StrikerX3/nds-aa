@@ -59,6 +59,8 @@ enum class Operator {
     XWidth,
     X0,
     InsertAAFracBits,
+    InvertAA,
+    InvertAAFrac,
     MulWidth,
     MulHeight,
     DivWidth,
@@ -114,6 +116,8 @@ constexpr Operator kOperators[] = {
     Operator::XWidth,
     Operator::X0,
     Operator::InsertAAFracBits,
+    Operator::InvertAA,
+    Operator::InvertAAFrac,
     Operator::MulWidth,
     Operator::MulHeight,
     Operator::DivWidth,
@@ -170,6 +174,8 @@ inline std::string OperatorName(Operator op) {
     case Operator::XWidth: return "push_x_width";
     case Operator::X0: return "push_x0";
     case Operator::InsertAAFracBits: return "insert_aa_frac_bits";
+    case Operator::InvertAA: return "invert_aa";
+    case Operator::InvertAAFrac: return "invert_aa_frac";
     case Operator::MulWidth: return "mul_width";
     case Operator::MulHeight: return "mul_height";
     case Operator::DivWidth: return "div_width";
@@ -426,6 +432,9 @@ private:
         case Operator::X0: stack.push_back(slope.X0()); return true;
 
         case Operator::InsertAAFracBits: return unaryFunc([](i32 x) { return x * Slope::kAAFracRange; });
+        case Operator::InvertAA: return binaryFunc([](i32 x, i32 y) { return x ? (y ^ (Slope::kAARange - 1)) : y; });
+        case Operator::InvertAAFrac:
+            return binaryFunc([](i32 x, i32 y) { return x ? (y ^ (Slope::kAAFracRange - 1)) : y; });
         case Operator::MulWidth: return unaryFunc([&](i32 x) { return x * vars.width; });
         case Operator::MulHeight: return unaryFunc([&](i32 x) { return x * vars.height; });
         case Operator::DivWidth: return unaryFunc([&](i32 x) { return x / vars.width; });

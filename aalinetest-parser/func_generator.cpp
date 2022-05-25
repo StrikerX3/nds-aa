@@ -101,7 +101,7 @@ struct DFSFuncGenerator {
     const std::vector<Operation> &templateOps;
     DataSet dataSet;
 
-    static constexpr size_t kMaxOperations = 6;
+    static constexpr size_t kMaxOperations = 40;
     static constexpr size_t kMaxStackSize = kMaxOperations; // current operations can add at most 1 item to the stack
 
     FixedStack stack;

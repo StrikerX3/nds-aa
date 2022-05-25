@@ -1,6 +1,9 @@
 #include "func_search.h"
 
-GAFuncSearch::GAFuncSearch(std::filesystem::path root) {
+#include <algorithm>
+
+GAFuncSearch::GAFuncSearch(std::filesystem::path root)
+    : m_rng(m_rd()) {
     //: m_dataSet{loadXMajorDataSet(root)}
 
     // Best fitness: 11
@@ -52,7 +55,6 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
             chrom.generation = m_generation;
         } else if (idx >= state.crossoverStart) {
             if (idx < state.crossoverStart + kWorkers) {
-                // Not 100% thread-safe... we'll get some crossovers for free
                 size_t workerIdx = idx - state.crossoverStart;
                 auto &sharedState = m_sharedStates[workerIdx];
                 state.population[idx] = sharedState.population[!sharedState.popBufferFlip];
@@ -65,6 +67,10 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
                 state.RandomizeGenes(chrom, m_templateOps);
                 state.SpliceGenes(chrom);
                 state.ReverseGenes(chrom);
+                state.DisableGenes(chrom);
+                state.ShiftChromosome(chrom);
+                state.RotateChromosome(chrom);
+                state.ShiftGenes(chrom);
             }
             chrom.generation = m_generation;
         }
@@ -76,6 +82,7 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
     }
 
     // Share best chromosomes
+    // std::shuffle(state.population.begin(), state.population.end(), m_rng);
     std::sort(state.population.begin(), state.population.end());
     auto &shared = m_sharedStates[workerId];
     shared.population[shared.popBufferFlip] = state.population[0];
@@ -233,8 +240,9 @@ void GAFuncSearch::WorkerState::RandomizeGenes(Chromosome &chrom, const std::vec
 }
 
 void GAFuncSearch::WorkerState::SpliceGenes(Chromosome &chrom) {
-    std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
+    // Swaps genes between two ranges
     if (pctDist(randomEngine) < spliceMutationChance) {
+        std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
         size_t start = intDist(randomEngine, param);
         size_t end = intDist(randomEngine, param);
         size_t pos = intDist(randomEngine, param);
@@ -258,8 +266,9 @@ void GAFuncSearch::WorkerState::SpliceGenes(Chromosome &chrom) {
 }
 
 void GAFuncSearch::WorkerState::ReverseGenes(Chromosome &chrom) {
-    std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
+    // Reverses a range of genes
     if (pctDist(randomEngine) < reverseMutationChance) {
+        std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
         size_t start = intDist(randomEngine, param);
         size_t end = intDist(randomEngine, param);
 
@@ -270,12 +279,72 @@ void GAFuncSearch::WorkerState::ReverseGenes(Chromosome &chrom) {
     }
 }
 
+void GAFuncSearch::WorkerState::DisableGenes(Chromosome &chrom) {
+    // Randomly disables genes
+    for (auto &gene : chrom.genes) {
+        if (gene.enabled && pctDist(randomEngine) < disableMutationChance) {
+            gene.enabled = false;
+        }
+    }
+}
+
+void GAFuncSearch::WorkerState::ShiftChromosome(Chromosome &chrom) {
+    // Shift all genes in the chromosome left or right.
+    // Genes at the edges are discarded/disabled.
+    if (pctDist(randomEngine) < shiftChromosomeMutationChance) {
+        std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
+        size_t dist = intDist(randomEngine, param);
+        bool left = pctDist(randomEngine) < 0.5f;
+        if (left) {
+            std::shift_left(chrom.genes.begin(), chrom.genes.end(), dist);
+        } else { // right
+            std::shift_right(chrom.genes.begin(), chrom.genes.end(), dist);
+        }
+    }
+}
+
+void GAFuncSearch::WorkerState::RotateChromosome(Chromosome &chrom) {
+    // Rotates all genes in the chromosome
+    if (pctDist(randomEngine) < shiftChromosomeMutationChance) {
+        std::uniform_int<size_t>::param_type param{0, chrom.genes.size() - 1};
+        size_t dist = intDist(randomEngine, param);
+        std::rotate(chrom.genes.begin(), chrom.genes.begin() + dist, chrom.genes.end());
+    }
+}
+
+void GAFuncSearch::WorkerState::ShiftGenes(Chromosome &chrom) {
+    // Randomly slides individual genes left or right while preserving the function order
+    for (size_t i = 0; i < chrom.genes.size(); i++) {
+        if (chrom.genes[i].enabled && pctDist(randomEngine) < shiftGenesMutationChance) {
+            size_t left = i;
+            size_t right = i;
+            while (left > 0) {
+                if (!chrom.genes[left - 1].enabled) {
+                    --left;
+                } else {
+                    break;
+                }
+            }
+            while (right > chrom.genes.size()) {
+                if (!chrom.genes[right + 1].enabled) {
+                    ++right;
+                } else {
+                    break;
+                }
+            }
+            std::uniform_int<size_t>::param_type param{left, right};
+            size_t pos = intDist(randomEngine, param);
+            std::swap(chrom.genes[i], chrom.genes[pos]);
+        }
+    }
+}
+
 uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
                                                     const std::vector<ExtDataPoint> &fixedDataPoints) {
     chrom.fitness = 0;
+    chrom.numErrors = 0;
 
     // Evaluate against the fixed data set
-    u64 numErrors = 1;
     for (auto &dataPoint : fixedDataPoints) {
         ctx.slope = dataPoint.slope;
         ctx.stack.clear();
@@ -293,7 +362,9 @@ uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
         }
         if (!valid || ctx.stack.empty()) {
             chrom.fitness = std::numeric_limits<uint64_t>::max();
-            break;
+            chrom.numErrors = std::numeric_limits<uint64_t>::max();
+            chrom.stackSize = 0;
+            return chrom.fitness;
         }
         i32 result = ctx.stack.back();
         /*result &= 1023;
@@ -303,16 +374,17 @@ uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
 
         if (result < dataPoint.dp.expectedOutput) {
             chrom.fitness += (i64)dataPoint.dp.expectedOutput - result;
-            numErrors++;
+            ++chrom.numErrors;
         } else if (result > dataPoint.upperBound) {
             chrom.fitness += (i64)result - dataPoint.upperBound;
-            numErrors++;
+            ++chrom.numErrors;
         }
         /*if (result < dataPoint.dp.expectedOutput || result > dataPoint.upperBound) {
-            chrom.fitness++;
+            ++chrom.fitness;
         }*/
     }
-    chrom.fitness *= numErrors;
+    // chrom.fitness *= chrom.numErrors;
+    chrom.stackSize = ctx.stack.size();
 
     // TODO: evaluate against intelligently selected items from the data set
     // - intelligently select entries for the test set

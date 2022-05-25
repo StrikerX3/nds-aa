@@ -27,16 +27,30 @@ public:
 
     struct Gene {
         Operation op;
-        bool enabled;
+        bool enabled = false;
     };
 
     struct Chromosome {
         std::array<Gene, kNumOps> genes;
         uint64_t fitness = std::numeric_limits<uint64_t>::max();
+        uint64_t numErrors = 0;
+        size_t stackSize = 0;
         uint64_t generation;
 
         bool operator<(const Chromosome &rhs) const {
-            return fitness < rhs.fitness;
+            if (fitness < rhs.fitness) {
+                return true;
+            }
+            if (fitness > rhs.fitness) {
+                return false;
+            }
+            if (numErrors < rhs.numErrors) {
+                return true;
+            }
+            if (numErrors > rhs.numErrors) {
+                return false;
+            }
+            return stackSize < rhs.stackSize;
         }
     };
 
@@ -91,6 +105,9 @@ private:
     std::array<std::jthread, kWorkers> m_workers;
     bool m_running = true;
 
+    std::random_device m_rd;
+    std::mt19937 m_rng;
+
     void NextGeneration(size_t workerId);
 
     struct SharedState {
@@ -125,6 +142,10 @@ private:
         float randomMutationChance = 0.30f;
         float spliceMutationChance = 0.05f;
         float reverseMutationChance = 0.05f;
+        float disableMutationChance = 0.10f;
+        float shiftChromosomeMutationChance = 0.15f;
+        float rotateChromosomeMutationChance = 0.15f;
+        float shiftGenesMutationChance = 0.20f;
 
         // Gene parameters
         float geneEnablePct = 0.5f;
@@ -149,6 +170,10 @@ private:
         void RandomizeGenes(Chromosome &chrom, const std::vector<Operation> &templateOps);
         void SpliceGenes(Chromosome &chrom);
         void ReverseGenes(Chromosome &chrom);
+        void DisableGenes(Chromosome &chrom);
+        void ShiftChromosome(Chromosome &chrom);
+        void RotateChromosome(Chromosome &chrom);
+        void ShiftGenes(Chromosome &chrom);
 
         uint64_t EvaluateFitness(Chromosome &chrom, const std::vector<ExtDataPoint> &fixedDataPoints);
     };

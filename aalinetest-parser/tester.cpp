@@ -168,55 +168,61 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                     slope.IsNegative() ? slopeStartX - (slope.X0() - slope.Width()) : slopeStartX - slope.X0();
                 const i32 coverageBias =
                     ((((2 * xOffsetOrigin + 1) * slope.Height() * Slope::kAAFracRange) / (2 * slope.Width())) %
-                     Slope::kAAFracRange) ^
-                    (slope.IsNegative() ? Slope::kAAFracRange - 1 : 0);
+                     Slope::kAAFracRange)
+                    /*^
+                    (slope.IsNegative() ? Slope::kAAFracRange - 1 : 0)*/
+                    ;
                 bool match = (coverageBias >= biasLowerBound) && (coverageBias <= biasUpperBound);
 
+                u64 delta;
                 result.testedPixels++;
                 if (match) {
                     result.numMatches++;
+                    delta = 0;
                 } else if (coverageBias < biasLowerBound) {
-                    result.undershoot += biasLowerBound - coverageBias;
+                    delta = biasLowerBound - coverageBias;
+                    result.undershoot += delta;
                 } else if (coverageBias > biasUpperBound) {
-                    result.overshoot += coverageBias - biasUpperBound;
+                    delta = coverageBias - biasUpperBound;
+                    result.overshoot += delta;
                 }
 
                 // Display gradient
-                // if (!match) {
-                // std::cout << slope.Width() << ";" << slope.Height() << ';' //
-                //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
-                //           << (slope.IsPositive() ? 'P' : 'N')              //
-                //           << (slope.IsXMajor() ? 'X' : 'Y')                //
-                //           << ';' << y << ';';
+                if (!match && delta == 1) {
+                    // std::cout << slope.Width() << ";" << slope.Height() << ';' //
+                    //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
+                    //           << (slope.IsPositive() ? 'P' : 'N')              //
+                    //           << (slope.IsXMajor() ? 'X' : 'Y')                //
+                    //           << ';' << y << ';';
 
-                std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left
-                          << slope.Height();
-                std::cout << "   "                            //
-                          << (slope.IsLeftEdge() ? 'L' : 'R') //
-                          << (slope.IsPositive() ? 'P' : 'N') //
-                          << (slope.IsXMajor() ? 'X' : 'Y');  //
-                std::cout << "    y=" << std::setw(3) << std::left << y << "   x=";
-                std::cout << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left << endX
-                          << " -> ";
-                if (biasLowerBound >= 1024) {
-                    // std::cout << ';';
-                    std::cout << "(unexpected gradient)";
-                } else {
-                    // std::cout << biasLowerBound << ';' << biasUpperBound;
-                    std::cout << std::setw(4) << std::right << biasLowerBound;
-                    if (biasLowerBound != biasUpperBound) {
-                        std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
+                    std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left
+                              << slope.Height();
+                    std::cout << "   "                            //
+                              << (slope.IsLeftEdge() ? 'L' : 'R') //
+                              << (slope.IsPositive() ? 'P' : 'N') //
+                              << (slope.IsXMajor() ? 'X' : 'Y');  //
+                    std::cout << "    y=" << std::setw(3) << std::left << y << "   x=";
+                    std::cout << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left << endX
+                              << " -> ";
+                    if (biasLowerBound >= 1024) {
+                        // std::cout << ';';
+                        std::cout << "(unexpected gradient)";
                     } else {
-                        std::cout << "      ";
+                        // std::cout << biasLowerBound << ';' << biasUpperBound;
+                        std::cout << std::setw(4) << std::right << biasLowerBound;
+                        if (biasLowerBound != biasUpperBound) {
+                            std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
+                        } else {
+                            std::cout << "      ";
+                        }
                     }
+                    std::cout << (match ? " == " : " != ") << coverageBias;
+                    // std::cout << "  ";
+                    // for (i32 x = startX; x <= endX; x++) {
+                    //     std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
+                    // }
+                    std::cout << '\n';
                 }
-                std::cout << (match ? " == " : " != ") << coverageBias;
-                // std::cout << "  ";
-                // for (i32 x = startX; x <= endX; x++) {
-                //     std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
-                // }
-                std::cout << '\n';
-                //}
             }
         } else { // Y-major or diagonal
             i32 lastX = -1;
@@ -524,11 +530,11 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     }*/
 
     // All X-major slopes
-    /*for (i32 y = data.minY; y <= data.maxY; y++) {
+    for (i32 y = data.minY; y <= data.maxY; y++) {
         for (i32 x = std::max<i32>(data.minX, y + 1); x <= data.maxX; x++) {
             testSlope(data, x, y, result);
         }
-    }*/
+    }
 
     // All Y-major slopes (except diagonals)
     /*for (i32 y = data.minY; y <= data.maxY; y++) {
@@ -563,7 +569,7 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
     // testSlope(data, 245, 192, result);
     // testSlope(data, 255, 192, result);
     // testSlope(data, 161, 101, result);
-    testSlope(data, 217, 190, result);
+    // testSlope(data, 217, 190, result);
 
     if (!result.mismatch) {
         std::cout << "OK!\n";

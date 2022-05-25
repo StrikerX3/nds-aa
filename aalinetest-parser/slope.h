@@ -438,6 +438,10 @@ public:
         }
     }
 
+    i32 AACoverageStep() const {
+        return m_covStep;
+    }
+
     bool IsCoverageInverted() const {
         return m_covInverted;
     }
