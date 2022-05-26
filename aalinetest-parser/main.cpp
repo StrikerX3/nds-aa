@@ -1201,7 +1201,7 @@ int main() {
         dps.rnx[dp.y] = dp;
     }
 
-    std::cout << "  WxH  Y coord         LPX         LNX         RPX         RNX\n";
+    std::cout << "  WxH  Y coord         LPX         LNX         RPX         RNX      Differences\n";
     for (u32 h = 0; h <= 192; h++) {
         for (u32 w = 0; w <= 256; w++) {
             const auto key = makeKey(w, h);
@@ -1254,10 +1254,46 @@ int main() {
                     }
                 };
 
-                printBiasRange(dps.lpx[key]);
-                printBiasRange(dps.lnx[key]);
-                printBiasRange(dps.rpx[key]);
-                printBiasRange(dps.rnx[key]);
+                auto &lpxDP = dps.lpx[key];
+                auto &lnxDP = dps.lnx[key];
+                auto &rpxDP = dps.rpx[key];
+                auto &rnxDP = dps.rnx[key];
+
+                printBiasRange(lpxDP);
+                printBiasRange(lnxDP);
+                printBiasRange(rpxDP);
+                printBiasRange(rnxDP);
+                std::cout << "  ";
+                if (lpxDP.biasLB == lnxDP.biasLB && lpxDP.biasUB == lnxDP.biasUB) {
+                    std::cout << "    ";
+                } else {
+                    std::cout << "  LL";
+                }
+                if (rpxDP.biasLB == rnxDP.biasLB && rpxDP.biasUB == rnxDP.biasUB) {
+                    std::cout << "    ";
+                } else {
+                    std::cout << "  RR";
+                }
+                if (lpxDP.biasLB == rpxDP.biasLB && lpxDP.biasUB == rpxDP.biasUB) {
+                    std::cout << "    ";
+                } else {
+                    std::cout << "  PP";
+                }
+                if (lnxDP.biasLB == rnxDP.biasLB && lnxDP.biasUB == rnxDP.biasUB) {
+                    std::cout << "    ";
+                } else {
+                    std::cout << "  NN";
+                }
+                if (lpxDP.biasLB == rnxDP.biasLB && lpxDP.biasUB == rnxDP.biasUB) {
+                    std::cout << "     ";
+                } else {
+                    std::cout << "  L+R";
+                }
+                if (rpxDP.biasLB == lnxDP.biasLB && rpxDP.biasUB == lnxDP.biasUB) {
+                    std::cout << "     ";
+                } else {
+                    std::cout << "  L-R";
+                }
                 std::cout << '\n';
             }
         }
