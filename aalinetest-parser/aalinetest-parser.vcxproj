@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="biasdataset.cpp" />
     <ClCompile Include="dataset.cpp" />
     <ClCompile Include="func_generator.cpp" />
     <ClCompile Include="func_search.cpp" />
@@ -149,6 +150,7 @@
     <ClCompile Include="tester.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="biasdataset.h" />
     <ClInclude Include="dataset.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="func.h" />

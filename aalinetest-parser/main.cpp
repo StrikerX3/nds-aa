@@ -1,3 +1,4 @@
+#include "biasdataset.h"
 #include "dataset.h"
 #include "file.h"
 #include "func_generator.h"
@@ -13,18 +14,20 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 int main1() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
     auto dataT = readFile("E:/Development/_refs/NDS/Research/Antialiasing/T.bin");
-    // auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
+    auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
 
     if (dataT)
         test(*dataT);
-    // if (dataB)
-    //     test(*dataB);
+    if (dataB)
+        test(*dataB);
 
     // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
     // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
@@ -137,7 +140,7 @@ int main4() {
 
 // --------------------------------------------------------------------------------
 
-int main() {
+int main5() {
     constexpr i32 kConstants[] = {
         0,
         1,
@@ -1150,6 +1153,114 @@ int main6() {
             printf(" %s", opStr.c_str());
         }
         printf("\n");
+    }
+
+    return EXIT_SUCCESS;
+}
+
+// --------------------------------------------------------------------------------
+
+int main() {
+    /*std::cout << "Extracting X-major bias data sets...\n";
+    extractXMajorBiasDataSet("E:/Development/_refs/NDS/Research/Antialiasing");
+    std::cout << "... done\n";*/
+
+    std::cout << "Loading X-major bias data sets...";
+    auto dataset = loadXMajorBiasDataSet("E:/Development/_refs/NDS/Research/Antialiasing");
+    std::cout << " OK\n";
+
+    struct DataPoints {
+        std::unordered_set<u32> keys;
+        std::unordered_map<u32, XMBDataPoint> lpx;
+        std::unordered_map<u32, XMBDataPoint> lnx;
+        std::unordered_map<u32, XMBDataPoint> rpx;
+        std::unordered_map<u32, XMBDataPoint> rnx;
+    };
+
+    auto makeKey = [](u32 x, u32 y) -> u32 { return x | (y << 9); };
+
+    std::unordered_map<u32, DataPoints> datapoints;
+    for (auto &dp : dataset.lpx) {
+        auto &dps = datapoints[makeKey(dp.width, dp.height)];
+        dps.keys.insert(dp.y);
+        dps.lpx[dp.y] = dp;
+    }
+    for (auto &dp : dataset.lnx) {
+        auto &dps = datapoints[makeKey(dp.width, dp.height)];
+        dps.keys.insert(dp.y);
+        dps.lnx[dp.y] = dp;
+    }
+    for (auto &dp : dataset.rpx) {
+        auto &dps = datapoints[makeKey(dp.width, dp.height)];
+        dps.keys.insert(dp.y);
+        dps.rpx[dp.y] = dp;
+    }
+    for (auto &dp : dataset.rnx) {
+        auto &dps = datapoints[makeKey(dp.width, dp.height)];
+        dps.keys.insert(dp.y);
+        dps.rnx[dp.y] = dp;
+    }
+
+    std::cout << "  WxH  Y coord         LPX         LNX         RPX         RNX\n";
+    for (u32 h = 0; h <= 192; h++) {
+        for (u32 w = 0; w <= 256; w++) {
+            const auto key = makeKey(w, h);
+            if (!datapoints.contains(key)) {
+                continue;
+            }
+            auto &dps = datapoints.at(key);
+            for (auto key : dps.keys) {
+                std::cout << std::setw(3) << std::right << w << 'x' << std::setw(3) << std::left << h;
+                std::cout << "  y=" << std::setw(3) << std::left << key;
+                std::cout << " -> ";
+
+                // Sanity check: ensure all data sets have matching data points
+                const bool lpxPresent = dps.lpx.contains(key);
+                const bool lnxPresent = dps.lnx.contains(key);
+                const bool rpxPresent = dps.rpx.contains(key);
+                const bool rnxPresent = dps.rnx.contains(key);
+                const bool allPresent = lpxPresent && lnxPresent && rpxPresent && rnxPresent;
+                if (!allPresent) {
+                    std::cout << "missing";
+                    if (!lpxPresent) {
+                        std::cout << " LPX";
+                    }
+                    if (!lnxPresent) {
+                        std::cout << " LNX";
+                    }
+                    if (!rpxPresent) {
+                        std::cout << " RPX";
+                    }
+                    if (!rnxPresent) {
+                        std::cout << " RNX";
+                    }
+                    std::cout << '\n';
+                    continue;
+                }
+
+                // Display bias ranges and check for discrepancies
+                auto printBiasRange = [](const XMBDataPoint &dp) {
+                    std::cout << "  ";
+                    if (dp.biasLB >= 1024) {
+                        // Shouldn't happen; every data point has a valid bias range
+                        std::cout << "<unexpec.>";
+                    } else {
+                        std::cout << std::setw(4) << std::right << dp.biasLB;
+                        if (dp.biasLB != dp.biasUB) {
+                            std::cout << ".." << std::setw(4) << std::left << dp.biasUB;
+                        } else {
+                            std::cout << "      ";
+                        }
+                    }
+                };
+
+                printBiasRange(dps.lpx[key]);
+                printBiasRange(dps.lnx[key]);
+                printBiasRange(dps.rpx[key]);
+                printBiasRange(dps.rnx[key]);
+                std::cout << '\n';
+            }
+        }
     }
 
     return EXIT_SUCCESS;
