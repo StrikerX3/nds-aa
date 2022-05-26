@@ -1203,7 +1203,7 @@ int main() {
 
     std::cout << "  WxH  Y coord         LPX         LNX         RPX         RNX      Differences\n";
     for (u32 h = 0; h <= 192; h++) {
-        for (u32 w = 0; w <= 256; w++) {
+        for (u32 w = 0; w < 256; w++) { // ignoring W=256 due to a few possible errors in the data set
             const auto key = makeKey(w, h);
             if (!datapoints.contains(key)) {
                 continue;
@@ -1285,16 +1285,22 @@ int main() {
                     std::cout << "  NN";
                 }
                 if (lpxDP.biasLB == rnxDP.biasLB && lpxDP.biasUB == rnxDP.biasUB) {
-                    std::cout << "     ";
+                    std::cout << "      ";
                 } else {
-                    std::cout << "  L+R";
+                    std::cout << "  L+R-";
                 }
                 if (rpxDP.biasLB == lnxDP.biasLB && rpxDP.biasUB == lnxDP.biasUB) {
-                    std::cout << "     ";
+                    std::cout << "      ";
                 } else {
-                    std::cout << "  L-R";
+                    std::cout << "  L-R+";
                 }
                 std::cout << '\n';
+
+                // Observations:
+                // - LPX+RPX and LNX+RNX match perfectly
+                //   (i.e. PP and NN never happen)
+                // - When positives and negatives mismatch, all _PX+_NX pairs mismatch together
+                //   (i.e. LL, RR, L+R- and L-R+ always show up simultaneously)
             }
         }
     }
