@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <barrier>
+#include <mutex>
 #include <random>
 #include <semaphore>
 #include <thread>
@@ -86,6 +87,15 @@ public:
         return *best;
     }
 
+    std::vector<Chromosome> BestChromosomesHistory() const {
+        std::scoped_lock lk{m_bestChromHistoryMutex};
+        return m_bestChromHistory;
+    }
+
+    uint64_t ResetCount() const {
+        return m_resetCount;
+    }
+
     void Stop() {
         m_running = false;
         for (auto &worker : m_workers) {
@@ -117,10 +127,42 @@ private:
     std::array<SharedState, kWorkers> m_sharedStates;
     std::atomic_uint64_t m_generation{0};
 
+    struct ResetBarrierCompletionFunction {
+        GAFuncSearch &ref;
+        void operator()() noexcept {
+            ref.DoReset();
+        }
+    };
+    friend struct ResetBarrierCompletionFunction;
+
+    uint64_t m_staleGenCount = 1000000;
+    uint64_t m_resetCount{0};
+    std::barrier<ResetBarrierCompletionFunction> m_resetBarrier{kWorkers, ResetBarrierCompletionFunction{*this}};
+
+    std::vector<Chromosome> m_bestChromHistory;
+    mutable std::mutex m_bestChromHistoryMutex;
+
+    void Reset() {
+        m_resetBarrier.arrive_and_wait();
+    }
+
+    void DoReset() {
+        std::scoped_lock lk{m_bestChromHistoryMutex};
+        m_bestChromHistory.push_back(BestChromosome());
+        m_generation = 0;
+        ++m_resetCount;
+        for (auto &state : m_workerStates) {
+            state.reset = true;
+        }
+        m_sharedStates.fill({});
+    }
+
     struct WorkerState {
         WorkerState()
             : randomEngine{randomDev()}
             , popDist{0, population.size()} {}
+
+        bool reset = true;
 
         std::array<Chromosome, kPopSize> population;
 

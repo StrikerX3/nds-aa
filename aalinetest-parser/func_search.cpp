@@ -40,11 +40,12 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
     auto &state = m_workerStates[workerId];
 
     // Selection
-    if (m_generation == 0) {
+    if (state.reset) {
         // First run; initialize population
         for (auto &chrom : state.population) {
             state.NewChromosome(chrom, m_templateOps);
         }
+        state.reset = false;
     }
 
     // Crossover, mutation and fitness evaluation
@@ -89,6 +90,9 @@ void GAFuncSearch::NextGeneration(size_t workerId) {
     shared.popBufferFlip = !shared.popBufferFlip;
 
     ++m_generation;
+    if (m_generation > state.population[0].generation + m_staleGenCount) {
+        Reset();
+    }
 }
 
 void GAFuncSearch::WorkerState::ComputeParameters() {

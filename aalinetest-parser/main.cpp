@@ -140,13 +140,14 @@ int main4() {
 
 // --------------------------------------------------------------------------------
 
-int main5() {
+int main() {
     constexpr i32 kConstants[] = {
         0,
         1,
         2,
         3,
         4,
+        5,
         Slope::kAARange,
         Slope::kAARange - 1,
         Slope::kAAFracBits,
@@ -957,21 +958,8 @@ int main5() {
         FillConsoleOutputCharacter(hndConsole, ' ', len1 + lenRest, buf.dwCursorPosition, &_);
     };
 
-    auto printBest = [&](bool showAllResults) {
-        SetConsoleCursorInfo(hndConsole, &cursorInfo);
-        SetConsoleCursorPosition(hndConsole, cursorPos);
-        const auto &best = ga.BestChromosome();
-        auto duration = t - ts;
-        std::cout << "Generation " << ga.CurrGeneration();
-        std::cout << "    Time: " << std::fixed << std::setprecision(3)
-                  << (std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() / 1000.0) << " sec";
-        std::cout << "    Speed: " << std::fixed << std::setprecision(2)
-                  << (double)ga.CurrGeneration() * 1000000000.0 / duration.count() << " gens/sec";
-        newLine();
-        std::cout << "  Best chromosome: fitness=" << best.fitness << ", generation=" << best.generation;
-        newLine();
-        std::cout << "  Function:";
-        for (auto &gene : best.genes) {
+    auto printChrom = [&](const GAFuncSearch::Chromosome &chrom) {
+        for (auto &gene : chrom.genes) {
             std::cout << ' ';
             if (gene.enabled) {
                 std::cout << gene.op.Str();
@@ -979,6 +967,26 @@ int main5() {
                 std::cout << '-';
             }
         }
+    };
+
+    auto printBest = [&](bool showAllResults) {
+        SetConsoleCursorInfo(hndConsole, &cursorInfo);
+        SetConsoleCursorPosition(hndConsole, cursorPos);
+        const auto &best = ga.BestChromosome();
+        const auto resetCount = ga.ResetCount();
+        auto duration = t - ts;
+        std::cout << "Generation " << ga.CurrGeneration();
+        std::cout << "    Time: " << std::fixed << std::setprecision(3)
+                  << (std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() / 1000.0) << " sec";
+        std::cout << "    Speed: " << std::fixed << std::setprecision(2)
+                  << (double)ga.CurrGeneration() * 1000000000.0 / duration.count() << " gens/sec";
+        newLine();
+        std::cout << "  Resets: " << resetCount;
+        newLine();
+        std::cout << "  Best chromosome: fitness=" << best.fitness << ", generation=" << best.generation;
+        newLine();
+        std::cout << "  Function:";
+        printChrom(best);
         newLine();
 
         for (auto &dp : dataPoints) {
@@ -1020,6 +1028,18 @@ int main5() {
                           << std::setw(4) << std::right << dp.dp.expectedOutput //
                           << ".." << std::setw(4) << std::left << dp.upperBound;
                 newLine();
+            }
+        }
+
+        if (resetCount > 0) {
+            std::cout << "  Previous best chromosomes:";
+            newLine();
+            size_t index = 0;
+            for (auto &chrom : ga.BestChromosomesHistory()) {
+                std::cout << "    " << index << ": [fitness=" << chrom.fitness << "]";
+                printChrom(chrom);
+                newLine();
+                ++index;
             }
         }
         blankBuffer();
@@ -1160,7 +1180,7 @@ int main6() {
 
 // --------------------------------------------------------------------------------
 
-int main() {
+int main7() {
     /*std::cout << "Extracting X-major bias data sets...\n";
     extractXMajorBiasDataSet("E:/Development/_refs/NDS/Research/Antialiasing");
     std::cout << "... done\n";*/
