@@ -930,7 +930,9 @@ int main() {
     auto updateInterval = 1000ms;
     auto t = clk::now();
     auto ts = t;
+    auto t0 = t;
     auto tsleep = t + updateInterval;
+    ga.SetResetCallback([&] { ts = clk::now(); });
 
     auto hndConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_CURSOR_INFO cursorInfo;
@@ -958,13 +960,19 @@ int main() {
         FillConsoleOutputCharacter(hndConsole, ' ', len1 + lenRest, buf.dwCursorPosition, &_);
     };
 
-    auto printChrom = [&](const GAFuncSearch::Chromosome &chrom) {
+    auto printChrom = [&](const GAFuncSearch::Chromosome &chrom, bool printDisabled) {
         for (auto &gene : chrom.genes) {
-            std::cout << ' ';
-            if (gene.enabled) {
-                std::cout << gene.op.Str();
+            if (printDisabled) {
+                std::cout << ' ';
+                if (gene.enabled) {
+                    std::cout << gene.op.Str();
+                } else {
+                    std::cout << '-';
+                }
             } else {
-                std::cout << '-';
+                if (gene.enabled) {
+                    std::cout << ' ' << gene.op.Str();
+                }
             }
         }
     };
@@ -975,6 +983,7 @@ int main() {
         const auto &best = ga.BestChromosome();
         const auto resetCount = ga.ResetCount();
         auto duration = t - ts;
+        auto totalDuration = t - t0;
         std::cout << "Generation " << ga.CurrGeneration();
         std::cout << "    Time: " << std::fixed << std::setprecision(3)
                   << (std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() / 1000.0) << " sec";
@@ -982,11 +991,13 @@ int main() {
                   << (double)ga.CurrGeneration() * 1000000000.0 / duration.count() << " gens/sec";
         newLine();
         std::cout << "  Resets: " << resetCount;
+        std::cout << "    Total time: " << std::fixed << std::setprecision(3)
+                  << (std::chrono::duration_cast<std::chrono::milliseconds>(totalDuration).count() / 1000.0) << " sec";
         newLine();
         std::cout << "  Best chromosome: fitness=" << best.fitness << ", generation=" << best.generation;
         newLine();
         std::cout << "  Function:";
-        printChrom(best);
+        printChrom(best, true);
         newLine();
 
         for (auto &dp : dataPoints) {
@@ -1037,7 +1048,7 @@ int main() {
             size_t index = 0;
             for (auto &chrom : ga.BestChromosomesHistory()) {
                 std::cout << "    " << index << ": [fitness=" << chrom.fitness << "]";
-                printChrom(chrom);
+                printChrom(chrom, false);
                 newLine();
                 ++index;
             }

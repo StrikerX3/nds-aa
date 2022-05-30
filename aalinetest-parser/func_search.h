@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <barrier>
+#include <functional>
 #include <mutex>
 #include <random>
 #include <semaphore>
@@ -57,6 +58,10 @@ public:
 
     GAFuncSearch(std::filesystem::path root);
     ~GAFuncSearch();
+
+    void SetResetCallback(std::function<void()> callback) {
+        m_onResetCallback = callback;
+    }
 
     void SetTemplateOps(const std::vector<Operation> &templateOps) {
         m_templateOps = templateOps;
@@ -126,6 +131,7 @@ private:
     };
     std::array<SharedState, kWorkers> m_sharedStates;
     std::atomic_uint64_t m_generation{0};
+    std::function<void()> m_onResetCallback = [] {};
 
     struct ResetBarrierCompletionFunction {
         GAFuncSearch &ref;
@@ -135,7 +141,7 @@ private:
     };
     friend struct ResetBarrierCompletionFunction;
 
-    uint64_t m_staleGenCount = 1000000;
+    uint64_t m_staleGenCount = 5000000;
     uint64_t m_resetCount{0};
     std::barrier<ResetBarrierCompletionFunction> m_resetBarrier{kWorkers, ResetBarrierCompletionFunction{*this}};
 
@@ -155,6 +161,7 @@ private:
             state.reset = true;
         }
         m_sharedStates.fill({});
+        m_onResetCallback();
     }
 
     struct WorkerState {
