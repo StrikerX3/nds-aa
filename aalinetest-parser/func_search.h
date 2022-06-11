@@ -17,6 +17,7 @@ struct ExtDataPoint {
     i32 upperBound;
     bool left;
     bool positive;
+    i32 errorWeight = 1;
     Slope slope;
 };
 

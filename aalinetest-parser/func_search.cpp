@@ -109,7 +109,8 @@ void GAFuncSearch::WorkerState::NewChromosome(Chromosome &chrom, const std::vect
     // TODO: implement other forms of gene generation
     // - random splicing of small chunks of "sensible" code
     // - incremental sequence (same as brute-force)
-    if (pctDist(randomEngine) < 0.999f) {
+    // if (pctDist(randomEngine) < 0.999f) {
+    if (true) {
         // Generate a completely new chromosome 99.9% of the time
         for (auto &gene : chrom.genes) {
             NewGene(gene, templateOps);
@@ -377,17 +378,18 @@ uint64_t GAFuncSearch::WorkerState::EvaluateFitness(Chromosome &chrom,
         }*/
 
         if (result < dataPoint.dp.expectedOutput) {
-            chrom.fitness += (i64)dataPoint.dp.expectedOutput - result;
-            ++chrom.numErrors;
+            // chrom.fitness += ((i64)dataPoint.dp.expectedOutput - result) * dataPoint.errorWeight;
+            chrom.numErrors += dataPoint.errorWeight;
         } else if (result > dataPoint.upperBound) {
-            chrom.fitness += (i64)result - dataPoint.upperBound;
-            ++chrom.numErrors;
+            // chrom.fitness += ((i64)result - dataPoint.upperBound) * dataPoint.errorWeight;
+            chrom.numErrors += dataPoint.errorWeight;
         }
         /*if (result < dataPoint.dp.expectedOutput || result > dataPoint.upperBound) {
             ++chrom.fitness;
         }*/
     }
     // chrom.fitness *= chrom.numErrors;
+    chrom.fitness = chrom.numErrors;
     chrom.stackSize = ctx.stack.size();
 
     // TODO: evaluate against intelligently selected items from the data set

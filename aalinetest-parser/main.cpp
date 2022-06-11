@@ -18,17 +18,17 @@
 #include <unordered_map>
 #include <unordered_set>
 
-int main1() {
+int main() {
     // convertScreenCap("data/screencap.bin", "data/screencap.tga");
     // uniqueColors("data/screencap.bin");
 
     auto dataT = readFile("E:/Development/_refs/NDS/Research/Antialiasing/T.bin");
-    auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
+    //auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
 
     if (dataT)
         test(*dataT);
-    if (dataB)
-        test(*dataB);
+    //if (dataB)
+    //    test(*dataB);
 
     // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
     // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
@@ -141,14 +141,9 @@ int main4() {
 
 // --------------------------------------------------------------------------------
 
-int main() {
+int main5() {
     constexpr i32 kConstants[] = {
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
+        -1,
         Slope::kAARange,
         Slope::kAARange - 1,
         Slope::kAAFracBits,
@@ -163,6 +158,10 @@ int main() {
     };
     std::vector<Operation> templateOps;
     {
+        for (i32 b = 0; b < 31; b++) {
+            templateOps.push_back(Operation{.type = Operation::Type::Constant, .constVal = (1 << b)});
+            templateOps.push_back(Operation{.type = Operation::Type::Constant, .constVal = (1 << b) - 1});
+        }
         for (i32 c : kConstants) {
             templateOps.push_back(Operation{.type = Operation::Type::Constant, .constVal = c});
         }
@@ -186,7 +185,7 @@ int main() {
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LeftShift});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::ArithmeticRightShift});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::LogicRightShift});
-        // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
+        templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::And});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Or});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Xor});
         // templateOps.push_back(Operation{.type = Operation::Type::Operator, .op = Operator::Not});
@@ -722,12 +721,199 @@ int main() {
     dataPoints.push_back({{0, 0, 6, 2, 160}, 170, true, true});
     dataPoints.push_back({{3, 1, 6, 2, 160}, 170, true, true});*/
 
-    // Off-by-one errors (0=ok, 1=off-by-one)
+    dataPoints.push_back({{0, 0, 186, 185, 480}, 511, true, true});
+    dataPoints.push_back({{1, 1, 186, 185, 480}, 511, true, true});
+    dataPoints.push_back({{2, 2, 186, 185, 480}, 511, true, true});
+    dataPoints.push_back({{3, 3, 186, 185, 480}, 511, true, true});
+    dataPoints.push_back({{4, 4, 186, 185, 480}, 511, true, true});
+    dataPoints.push_back({{5, 5, 186, 185, 480}, 511, true, true});
+    dataPoints.push_back({{6, 6, 186, 185, 448}, 479, true, true});
+    dataPoints.push_back({{7, 7, 186, 185, 448}, 479, true, true});
+    dataPoints.push_back({{8, 8, 186, 185, 448}, 479, true, true});
+    dataPoints.push_back({{9, 9, 186, 185, 448}, 479, true, true});
+    dataPoints.push_back({{10, 10, 186, 185, 448}, 479, true, true});
+    dataPoints.push_back({{11, 11, 186, 185, 448}, 479, true, true});
+    dataPoints.push_back({{12, 12, 186, 185, 416}, 447, true, true});
+    dataPoints.push_back({{13, 13, 186, 185, 416}, 447, true, true});
+    dataPoints.push_back({{14, 14, 186, 185, 416}, 447, true, true});
+    dataPoints.push_back({{15, 15, 186, 185, 416}, 447, true, true});
+    dataPoints.push_back({{16, 16, 186, 185, 416}, 447, true, true});
+    dataPoints.push_back({{17, 17, 186, 185, 384}, 415, true, true});
+    dataPoints.push_back({{18, 18, 186, 185, 384}, 415, true, true});
+    dataPoints.push_back({{19, 19, 186, 185, 384}, 415, true, true});
+    dataPoints.push_back({{20, 20, 186, 185, 384}, 415, true, true});
+    dataPoints.push_back({{21, 21, 186, 185, 384}, 415, true, true});
+    dataPoints.push_back({{22, 22, 186, 185, 384}, 415, true, true});
+    dataPoints.push_back({{23, 23, 186, 185, 352}, 383, true, true});
+    dataPoints.push_back({{24, 24, 186, 185, 352}, 383, true, true});
+    dataPoints.push_back({{25, 25, 186, 185, 352}, 383, true, true});
+    dataPoints.push_back({{26, 26, 186, 185, 352}, 383, true, true});
+    dataPoints.push_back({{27, 27, 186, 185, 352}, 383, true, true});
+    dataPoints.push_back({{28, 28, 186, 185, 352}, 383, true, true});
+    dataPoints.push_back({{29, 29, 186, 185, 320}, 351, true, true});
+    dataPoints.push_back({{30, 30, 186, 185, 320}, 351, true, true});
+    dataPoints.push_back({{31, 31, 186, 185, 320}, 351, true, true});
+    dataPoints.push_back({{32, 32, 186, 185, 320}, 351, true, true});
+    dataPoints.push_back({{33, 33, 186, 185, 320}, 351, true, true});
+    dataPoints.push_back({{34, 34, 186, 185, 320}, 351, true, true});
+    dataPoints.push_back({{35, 35, 186, 185, 288}, 319, true, true});
+    dataPoints.push_back({{36, 36, 186, 185, 288}, 319, true, true});
+    dataPoints.push_back({{37, 37, 186, 185, 288}, 319, true, true});
+    dataPoints.push_back({{38, 38, 186, 185, 288}, 319, true, true});
+    dataPoints.push_back({{39, 39, 186, 185, 288}, 319, true, true});
+    dataPoints.push_back({{40, 40, 186, 185, 288}, 319, true, true});
+    dataPoints.push_back({{41, 41, 186, 185, 256}, 287, true, true});
+    dataPoints.push_back({{42, 42, 186, 185, 256}, 287, true, true});
+    dataPoints.push_back({{43, 43, 186, 185, 256}, 287, true, true});
+    dataPoints.push_back({{44, 44, 186, 185, 256}, 287, true, true});
+    dataPoints.push_back({{45, 45, 186, 185, 256}, 287, true, true});
+    dataPoints.push_back({{46, 46, 186, 185, 256}, 287, true, true});
+    dataPoints.push_back({{47, 47, 186, 185, 224}, 255, true, true});
+    dataPoints.push_back({{48, 48, 186, 185, 224}, 255, true, true});
+    dataPoints.push_back({{49, 49, 186, 185, 224}, 255, true, true});
+    dataPoints.push_back({{50, 50, 186, 185, 224}, 255, true, true});
+    dataPoints.push_back({{51, 51, 186, 185, 224}, 255, true, true});
+    dataPoints.push_back({{52, 52, 186, 185, 192}, 223, true, true});
+    dataPoints.push_back({{53, 53, 186, 185, 192}, 223, true, true});
+    dataPoints.push_back({{54, 54, 186, 185, 192}, 223, true, true});
+    dataPoints.push_back({{55, 55, 186, 185, 192}, 223, true, true});
+    dataPoints.push_back({{56, 56, 186, 185, 192}, 223, true, true});
+    dataPoints.push_back({{57, 57, 186, 185, 192}, 223, true, true});
+    dataPoints.push_back({{58, 58, 186, 185, 160}, 191, true, true});
+    dataPoints.push_back({{59, 59, 186, 185, 160}, 191, true, true});
+    dataPoints.push_back({{60, 60, 186, 185, 160}, 191, true, true});
+    dataPoints.push_back({{61, 61, 186, 185, 160}, 191, true, true});
+    dataPoints.push_back({{62, 62, 186, 185, 160}, 191, true, true});
+    dataPoints.push_back({{63, 63, 186, 185, 160}, 191, true, true});
+    dataPoints.push_back({{64, 64, 186, 185, 128}, 159, true, true});
+    dataPoints.push_back({{65, 65, 186, 185, 128}, 159, true, true});
+    dataPoints.push_back({{66, 66, 186, 185, 128}, 159, true, true});
+    dataPoints.push_back({{67, 67, 186, 185, 128}, 159, true, true});
+    dataPoints.push_back({{68, 68, 186, 185, 128}, 159, true, true});
+    dataPoints.push_back({{69, 69, 186, 185, 128}, 159, true, true});
+    dataPoints.push_back({{70, 70, 186, 185, 96}, 127, true, true});
+    dataPoints.push_back({{71, 71, 186, 185, 96}, 127, true, true});
+    dataPoints.push_back({{72, 72, 186, 185, 96}, 127, true, true});
+    dataPoints.push_back({{73, 73, 186, 185, 96}, 127, true, true});
+    dataPoints.push_back({{74, 74, 186, 185, 96}, 127, true, true});
+    dataPoints.push_back({{75, 75, 186, 185, 96}, 127, true, true});
+    dataPoints.push_back({{76, 76, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{77, 77, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{78, 78, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{79, 79, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{80, 80, 186, 185, 64}, 95, true, true});
+    dataPoints.push_back({{81, 81, 186, 185, 32}, 63, true, true});
+    dataPoints.push_back({{82, 82, 186, 185, 32}, 63, true, true});
+    dataPoints.push_back({{83, 83, 186, 185, 32}, 63, true, true});
+    dataPoints.push_back({{84, 84, 186, 185, 32}, 63, true, true});
+    dataPoints.push_back({{85, 85, 186, 185, 32}, 63, true, true});
+    dataPoints.push_back({{86, 86, 186, 185, 32}, 63, true, true});
+    dataPoints.push_back({{87, 87, 186, 185, 0}, 31, true, true});
+    dataPoints.push_back({{88, 88, 186, 185, 0}, 31, true, true});
+    dataPoints.push_back({{89, 89, 186, 185, 0}, 31, true, true});
+    dataPoints.push_back({{90, 90, 186, 185, 0}, 31, true, true});
+    dataPoints.push_back({{91, 91, 186, 185, 0}, 31, true, true});
+    dataPoints.push_back({{92, 92, 186, 185, 0}, 31, true, true});
+    dataPoints.push_back({{93, 93, 186, 185, 992}, 1024, true, true});
+    dataPoints.push_back({{94, 94, 186, 185, 992}, 1024, true, true});
+    dataPoints.push_back({{95, 95, 186, 185, 992}, 1024, true, true});
+    dataPoints.push_back({{96, 96, 186, 185, 992}, 1024, true, true});
+    dataPoints.push_back({{97, 97, 186, 185, 992}, 1024, true, true});
+    dataPoints.push_back({{98, 98, 186, 185, 992}, 1024, true, true});
+    dataPoints.push_back({{99, 99, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{100, 100, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{101, 101, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{102, 102, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{103, 103, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{104, 104, 186, 185, 960}, 991, true, true});
+    dataPoints.push_back({{105, 105, 186, 185, 928}, 959, true, true});
+    dataPoints.push_back({{106, 106, 186, 185, 64}, 95, true, true, 100});
+    dataPoints.push_back({{107, 108, 186, 185, 928}, 959, true, true});
+    dataPoints.push_back({{108, 109, 186, 185, 928}, 959, true, true});
+    dataPoints.push_back({{109, 110, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{110, 111, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{111, 112, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{112, 113, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{113, 114, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{114, 115, 186, 185, 896}, 927, true, true});
+    dataPoints.push_back({{115, 116, 186, 185, 864}, 895, true, true});
+    dataPoints.push_back({{116, 117, 186, 185, 864}, 895, true, true});
+    dataPoints.push_back({{117, 118, 186, 185, 864}, 895, true, true});
+    dataPoints.push_back({{118, 119, 186, 185, 864}, 895, true, true});
+    dataPoints.push_back({{119, 120, 186, 185, 864}, 895, true, true});
+    dataPoints.push_back({{120, 121, 186, 185, 864}, 895, true, true});
+    dataPoints.push_back({{121, 122, 186, 185, 832}, 863, true, true});
+    dataPoints.push_back({{122, 123, 186, 185, 832}, 863, true, true});
+    dataPoints.push_back({{123, 124, 186, 185, 832}, 863, true, true});
+    dataPoints.push_back({{124, 125, 186, 185, 832}, 863, true, true});
+    dataPoints.push_back({{125, 126, 186, 185, 832}, 863, true, true});
+    dataPoints.push_back({{126, 127, 186, 185, 832}, 863, true, true});
+    dataPoints.push_back({{127, 128, 186, 185, 800}, 831, true, true});
+    dataPoints.push_back({{128, 129, 186, 185, 800}, 831, true, true});
+    dataPoints.push_back({{129, 130, 186, 185, 800}, 831, true, true});
+    dataPoints.push_back({{130, 131, 186, 185, 800}, 831, true, true});
+    dataPoints.push_back({{131, 132, 186, 185, 800}, 831, true, true});
+    dataPoints.push_back({{132, 133, 186, 185, 800}, 831, true, true});
+    dataPoints.push_back({{133, 134, 186, 185, 768}, 799, true, true});
+    dataPoints.push_back({{134, 135, 186, 185, 768}, 799, true, true});
+    dataPoints.push_back({{135, 136, 186, 185, 768}, 799, true, true});
+    dataPoints.push_back({{136, 137, 186, 185, 768}, 799, true, true});
+    dataPoints.push_back({{137, 138, 186, 185, 768}, 799, true, true});
+    dataPoints.push_back({{138, 139, 186, 185, 768}, 799, true, true});
+    dataPoints.push_back({{139, 140, 186, 185, 736}, 767, true, true});
+    dataPoints.push_back({{140, 141, 186, 185, 736}, 767, true, true});
+    dataPoints.push_back({{141, 142, 186, 185, 736}, 767, true, true});
+    dataPoints.push_back({{142, 143, 186, 185, 736}, 767, true, true});
+    dataPoints.push_back({{143, 144, 186, 185, 736}, 767, true, true});
+    dataPoints.push_back({{144, 145, 186, 185, 704}, 735, true, true});
+    dataPoints.push_back({{145, 146, 186, 185, 704}, 735, true, true});
+    dataPoints.push_back({{146, 147, 186, 185, 704}, 735, true, true});
+    dataPoints.push_back({{147, 148, 186, 185, 704}, 735, true, true});
+    dataPoints.push_back({{148, 149, 186, 185, 704}, 735, true, true});
+    dataPoints.push_back({{149, 150, 186, 185, 704}, 735, true, true});
+    dataPoints.push_back({{150, 151, 186, 185, 672}, 703, true, true});
+    dataPoints.push_back({{151, 152, 186, 185, 672}, 703, true, true});
+    dataPoints.push_back({{152, 153, 186, 185, 672}, 703, true, true});
+    dataPoints.push_back({{153, 154, 186, 185, 672}, 703, true, true});
+    dataPoints.push_back({{154, 155, 186, 185, 672}, 703, true, true});
+    dataPoints.push_back({{155, 156, 186, 185, 672}, 703, true, true});
+    dataPoints.push_back({{156, 157, 186, 185, 640}, 671, true, true});
+    dataPoints.push_back({{157, 158, 186, 185, 640}, 671, true, true});
+    dataPoints.push_back({{158, 159, 186, 185, 640}, 671, true, true});
+    dataPoints.push_back({{159, 160, 186, 185, 640}, 671, true, true});
+    dataPoints.push_back({{160, 161, 186, 185, 640}, 671, true, true});
+    dataPoints.push_back({{161, 162, 186, 185, 640}, 671, true, true});
+    dataPoints.push_back({{162, 163, 186, 185, 608}, 639, true, true});
+    dataPoints.push_back({{163, 164, 186, 185, 608}, 639, true, true});
+    dataPoints.push_back({{164, 165, 186, 185, 608}, 639, true, true});
+    dataPoints.push_back({{165, 166, 186, 185, 608}, 639, true, true});
+    dataPoints.push_back({{166, 167, 186, 185, 608}, 639, true, true});
+    dataPoints.push_back({{167, 168, 186, 185, 608}, 639, true, true});
+    dataPoints.push_back({{168, 169, 186, 185, 576}, 607, true, true});
+    dataPoints.push_back({{169, 170, 186, 185, 576}, 607, true, true});
+    dataPoints.push_back({{170, 171, 186, 185, 576}, 607, true, true});
+    dataPoints.push_back({{171, 172, 186, 185, 576}, 607, true, true});
+    dataPoints.push_back({{172, 173, 186, 185, 576}, 607, true, true});
+    dataPoints.push_back({{173, 174, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{174, 175, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{175, 176, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{176, 177, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{177, 178, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{178, 179, 186, 185, 544}, 575, true, true});
+    dataPoints.push_back({{179, 180, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{180, 181, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{181, 182, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{182, 183, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{183, 184, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{184, 185, 186, 185, 512}, 543, true, true});
+
+    // Off-by-one errors (0 or negative=ok, positive=off-by-one)
+    /*constexpr auto minValue = std::numeric_limits<i32>::min();
     constexpr auto maxValue = std::numeric_limits<i32>::max();
-    dataPoints.push_back({{0, 0, 114, 2, 0}, 0, true, true});
-    dataPoints.push_back({{0, 0, 147, 2, 0}, 0, true, true});
-    dataPoints.push_back({{0, 0, 54, 2, 0}, 0, true, true});
-    dataPoints.push_back({{0, 0, 57, 3, 0}, 0, true, true});
+    dataPoints.push_back({{0, 0, 114, 2, minValue}, 0, true, true});
+    dataPoints.push_back({{0, 0, 147, 2, minValue}, 0, true, true});
+    dataPoints.push_back({{0, 0, 54, 2, minValue}, 0, true, true});
+    dataPoints.push_back({{0, 0, 57, 3, minValue}, 0, true, true});
     dataPoints.push_back({{101, 101, 191, 190, 1}, maxValue, true, true});
     dataPoints.push_back({{103, 1, 205, 2, 1}, maxValue, true, true});
     dataPoints.push_back({{103, 1, 206, 2, 1}, maxValue, true, true});
@@ -743,7 +929,7 @@ int main() {
     dataPoints.push_back({{106, 4, 133, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{107, 81, 253, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{108, 4, 135, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{109, 1, 147, 2, 0}, 0, false, false});
+    dataPoints.push_back({{109, 1, 147, 2, minValue}, 0, false, false});
     dataPoints.push_back({{110, 3, 147, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{111, 92, 227, 188, 1}, maxValue, true, true});
     dataPoints.push_back({{114, 100, 217, 191, 1}, maxValue, true, true});
@@ -764,20 +950,20 @@ int main() {
     dataPoints.push_back({{139, 3, 231, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{141, 3, 188, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{141, 3, 235, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{142, 1, 114, 2, 0}, 0, false, false});
-    dataPoints.push_back({{142, 89, 161, 101, 0}, 0, true, true});
+    dataPoints.push_back({{142, 1, 114, 2, minValue}, 0, false, false});
+    dataPoints.push_back({{142, 89, 161, 101, minValue}, 0, true, true});
     dataPoints.push_back({{143, 2, 214, 3, 1}, maxValue, true, true});
-    dataPoints.push_back({{143, 90, 161, 101, 0}, 0, true, true});
+    dataPoints.push_back({{143, 90, 161, 101, minValue}, 0, true, true});
     dataPoints.push_back({{144, 115, 236, 188, 1}, maxValue, true, true});
     dataPoints.push_back({{145, 2, 217, 3, 1}, maxValue, true, true});
     dataPoints.push_back({{145, 3, 193, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{145, 4, 181, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{145, 91, 161, 101, 0}, 0, true, true});
+    dataPoints.push_back({{145, 91, 161, 101, minValue}, 0, true, true});
     dataPoints.push_back({{147, 92, 161, 101, 1}, maxValue, true, true});
-    dataPoints.push_back({{148, 94, 161, 101, 0}, 0, true, true});
-    dataPoints.push_back({{150, 95, 161, 101, 0}, 0, true, true});
+    dataPoints.push_back({{148, 94, 161, 101, minValue}, 0, true, true});
+    dataPoints.push_back({{150, 95, 161, 101, minValue}, 0, true, true});
     dataPoints.push_back({{151, 122, 238, 192, 1}, maxValue, true, true});
-    dataPoints.push_back({{151, 96, 161, 101, 0}, 0, true, true});
+    dataPoints.push_back({{151, 96, 161, 101, minValue}, 0, true, true});
     dataPoints.push_back({{154, 3, 205, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{155, 3, 206, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{155, 3, 207, 4, 1}, maxValue, true, true});
@@ -787,13 +973,13 @@ int main() {
     dataPoints.push_back({{157, 2, 235, 3, 1}, maxValue, true, true});
     dataPoints.push_back({{158, 3, 211, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{159, 4, 199, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{160, 140, 217, 190, 0}, 0, true, true});
+    dataPoints.push_back({{160, 140, 217, 190, minValue}, 0, true, true});
     dataPoints.push_back({{160, 4, 200, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{161, 141, 217, 190, 0}, 0, true, true});
+    dataPoints.push_back({{161, 141, 217, 190, minValue}, 0, true, true});
     dataPoints.push_back({{161, 3, 215, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{162, 142, 217, 190, 1}, maxValue, true, true});
-    dataPoints.push_back({{163, 143, 217, 190, 0}, 0, true, true});
-    dataPoints.push_back({{164, 144, 217, 190, 0}, 0, true, true});
+    dataPoints.push_back({{163, 143, 217, 190, minValue}, 0, true, true});
+    dataPoints.push_back({{164, 144, 217, 190, minValue}, 0, true, true});
     dataPoints.push_back({{165, 148, 213, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{166, 3, 221, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{167, 148, 215, 190, 1}, maxValue, true, true});
@@ -807,22 +993,22 @@ int main() {
     dataPoints.push_back({{178, 3, 237, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{178, 4, 222, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{181, 4, 226, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{182, 0, 147, 2, 0}, 0, false, false});
+    dataPoints.push_back({{182, 0, 147, 2, minValue}, 0, false, false});
     dataPoints.push_back({{185, 152, 233, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{186, 146, 240, 188, 1}, maxValue, true, true});
     dataPoints.push_back({{186, 4, 232, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{188, 4, 235, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{189, 142, 253, 190, 1}, maxValue, true, true});
-    dataPoints.push_back({{19, 2, 57, 3, 0}, 0, true, true});
+    dataPoints.push_back({{19, 2, 57, 3, minValue}, 0, true, true});
     dataPoints.push_back({{193, 158, 235, 192, 1}, maxValue, true, true});
     dataPoints.push_back({{193, 4, 241, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{197, 153, 246, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{198, 170, 221, 190, 1}, maxValue, true, true});
-    dataPoints.push_back({{199, 0, 114, 2, 0}, 0, false, false});
+    dataPoints.push_back({{199, 0, 114, 2, minValue}, 0, false, false});
     dataPoints.push_back({{199, 158, 242, 192, 1}, maxValue, true, true});
-    dataPoints.push_back({{199, 3, 57, 3, 0}, 0, false, false});
+    dataPoints.push_back({{199, 3, 57, 3, minValue}, 0, false, false});
     dataPoints.push_back({{201, 160, 241, 192, 1}, maxValue, true, true});
-    dataPoints.push_back({{202, 1, 54, 2, 0}, 0, false, false});
+    dataPoints.push_back({{202, 1, 54, 2, minValue}, 0, false, false});
     dataPoints.push_back({{202, 154, 251, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{203, 155, 249, 190, 1}, maxValue, true, true});
     dataPoints.push_back({{203, 162, 236, 188, 1}, maxValue, true, true});
@@ -832,16 +1018,16 @@ int main() {
     dataPoints.push_back({{212, 167, 241, 190, 1}, maxValue, true, true});
     dataPoints.push_back({{212, 187, 218, 192, 1}, maxValue, true, true});
     dataPoints.push_back({{213, 178, 229, 191, 1}, maxValue, true, true});
-    dataPoints.push_back({{215, 188, 217, 190, 0}, 0, true, true});
+    dataPoints.push_back({{215, 188, 217, 190, minValue}, 0, true, true});
     dataPoints.push_back({{216, 165, 250, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{216, 189, 217, 190, 1}, maxValue, true, true});
     dataPoints.push_back({{218, 179, 231, 190, 1}, maxValue, true, true});
     dataPoints.push_back({{218, 180, 233, 192, 1}, maxValue, true, true});
-    dataPoints.push_back({{218, 2, 57, 3, 0}, 0, false, false});
+    dataPoints.push_back({{218, 2, 57, 3, minValue}, 0, false, false});
     dataPoints.push_back({{220, 185, 227, 191, 1}, maxValue, true, true});
-    dataPoints.push_back({{229, 0, 54, 2, 0}, 0, false, false});
+    dataPoints.push_back({{229, 0, 54, 2, minValue}, 0, false, false});
     dataPoints.push_back({{234, 190, 235, 191, 1}, maxValue, true, true});
-    dataPoints.push_back({{237, 0, 57, 3, 0}, 0, false, false});
+    dataPoints.push_back({{237, 0, 57, 3, minValue}, 0, false, false});
     dataPoints.push_back({{238, 185, 242, 188, 1}, maxValue, true, true});
     dataPoints.push_back({{240, 181, 251, 189, 1}, maxValue, true, true});
     dataPoints.push_back({{246, 186, 251, 190, 1}, maxValue, true, true});
@@ -865,14 +1051,14 @@ int main() {
     dataPoints.push_back({{38, 30, 241, 188, 1}, maxValue, true, true});
     dataPoints.push_back({{41, 1, 122, 3, 1}, maxValue, true, true});
     dataPoints.push_back({{43, 1, 171, 4, 1}, maxValue, true, true});
-    dataPoints.push_back({{45, 25, 66, 37, 0}, 0, true, true});
-    dataPoints.push_back({{46, 26, 66, 37, 0}, 0, true, true});
+    dataPoints.push_back({{45, 25, 66, 37, minValue}, 0, true, true});
+    dataPoints.push_back({{46, 26, 66, 37, minValue}, 0, true, true});
     dataPoints.push_back({{48, 1, 239, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{48, 27, 66, 37, 0}, 1, true, true});
-    dataPoints.push_back({{50, 28, 66, 37, 0}, 0, true, true});
+    dataPoints.push_back({{50, 28, 66, 37, minValue}, 0, true, true});
     dataPoints.push_back({{50, 4, 75, 6, 1}, maxValue, true, true});
     dataPoints.push_back({{51, 1, 205, 4, 1}, maxValue, true, true});
-    dataPoints.push_back({{52, 29, 66, 37, 0}, 0, true, true});
+    dataPoints.push_back({{52, 29, 66, 37, minValue}, 0, true, true});
     dataPoints.push_back({{54, 2, 108, 4, 1}, maxValue, true, true});
     dataPoints.push_back({{54, 2, 135, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{54, 2, 81, 3, 1}, maxValue, true, true});
@@ -909,7 +1095,7 @@ int main() {
     dataPoints.push_back({{94, 2, 235, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{95, 84, 217, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{98, 3, 163, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{98, 97, 191, 189, 1}, maxValue, true, true});
+    dataPoints.push_back({{98, 97, 191, 189, 1}, maxValue, true, true});*/
 
     for (auto &dp : dataPoints) {
         if (dp.positive) {
@@ -996,7 +1182,8 @@ int main() {
         std::cout << "    Total time: " << std::fixed << std::setprecision(3)
                   << (std::chrono::duration_cast<std::chrono::milliseconds>(totalDuration).count() / 1000.0) << " sec";
         newLine();
-        std::cout << "  Best chromosome: fitness=" << best.fitness << ", generation=" << best.generation;
+        std::cout << "  Best chromosome: fitness=" << best.fitness << ", errors=" << best.numErrors
+                  << ", stack size=" << best.stackSize << ", generation=" << best.generation;
         newLine();
         std::cout << "  Function:";
         printChrom(best, true);
@@ -1049,7 +1236,8 @@ int main() {
             newLine();
             size_t index = 0;
             for (auto &chrom : ga.BestChromosomesHistory()) {
-                std::cout << "    " << index << ": [fitness=" << chrom.fitness << "]";
+                std::cout << "    " << index << ": [fitness=" << chrom.fitness << ", errors=" << chrom.numErrors
+                          << ", stack size=" << chrom.stackSize << "]";
                 printChrom(chrom, false);
                 newLine();
                 ++index;
