@@ -166,12 +166,15 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 const i32 slopeStartX = slope.IsNegative() ? slope.XEnd(y) : slope.XStart(y);
                 const i32 xOffsetOrigin =
                     slope.IsNegative() ? slopeStartX - (slope.X0() - slope.Width()) : slopeStartX - slope.X0();
-                const i32 coverageBias =
+                i32 coverageBias =
                     ((((2 * xOffsetOrigin + 1) * slope.Height() * Slope::kAAFracRange) / (2 * slope.Width())) %
-                     Slope::kAAFracRange)
-                    /*^
-                    (slope.IsNegative() ? Slope::kAAFracRange - 1 : 0)*/
-                    ;
+                     Slope::kAAFracRange);
+                if (slope.IsNegative()) {
+                    coverageBias ^= Slope::kAAFracRange - 1;
+                }
+                if (coverageBias > slope.AACoverageStep() && slope.XStart(y) != slope.XEnd(y)) {
+                    coverageBias ^= Slope::kAAFracRange - 1;
+                }
                 bool match = (coverageBias >= biasLowerBound) && (coverageBias <= biasUpperBound);
 
                 u64 delta;
@@ -188,7 +191,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 }
 
                 // Display gradient
-                if (!match && delta == 1) {
+                if (!match && delta > 1) {
                     // std::cout << slope.Width() << ";" << slope.Height() << ';' //
                     //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
                     //           << (slope.IsPositive() ? 'P' : 'N')              //
@@ -333,7 +336,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
         }
     };
     dumpGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
-    // dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);
+    dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);
 
     // Generate X-major gradients using the new bias method and compare against the data set
     /*auto calcGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
