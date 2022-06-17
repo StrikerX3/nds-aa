@@ -196,8 +196,8 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 // Display gradient
                 // if (!match) {
                 // if (true) {
-                //  if (!match && delta == 1) {  // off-by-one errors
-                if (!match && delta > 1) { // discontinuities
+                // if (!match && delta > 1) { // discontinuities
+                if (!match && delta == 1) { // off-by-one errors
                     // std::cout << slope.Width() << ";" << slope.Height() << ';' //
                     //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
                     //           << (slope.IsPositive() ? 'P' : 'N')              //

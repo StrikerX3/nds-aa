@@ -394,18 +394,9 @@ public:
         }
 
         if (m_xMajor) {
-            // TODO: fix off-by-one errors
-            // - Coverage bias is slightly off in ~2% of the cases
-            // - Handle the artifacts in 186x185 and many others
-            //   - The line has two perfect diagonal segments: 0x0 to 106x106, and 107x106 to 185x184
-            //   - The calculation produces a gradient that's too short for the first segment, which causes values to
-            //     wrap around to 31 before the segment ends (starting at 93x93)
-            //   - The gradient goes ..., 30, 30, 30, 29, >2, 31<, 29, 29, 28, ... at the transition between segments
-            //     (excerpt from 102x102 to 110x109)
-            //   - The values 2 and 31 are in the scanline that contains the transition (106)
-            //   - These two values come from the corresponding negative slope at the same exact position within the
-            //     gradient, which goes ..., 3, 3, 3, 2, >2, 31<, 2, 1, 1, 1, ...
-            //   - It could also be seen as a miscalculation of the coverage bias
+            // TODO: fix off-by-one errors in positive slopes
+            // - Coverage bias is slightly off in 7676 cases
+            // TODO: fix negative slopes
 
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 endX = m_negative ? XStart(y) : XEnd(y);

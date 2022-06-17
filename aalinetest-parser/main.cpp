@@ -30,8 +30,10 @@ int main() {
     // if (dataB)
     //     test(*dataB);
 
-    // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
-    // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
+    // if (dataT)
+    //     writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
+    // if (dataB)
+    //     writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
 
     return EXIT_SUCCESS;
 }
