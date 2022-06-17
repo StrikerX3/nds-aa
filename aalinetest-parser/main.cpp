@@ -23,12 +23,12 @@ int main() {
     // uniqueColors("data/screencap.bin");
 
     auto dataT = readFile("E:/Development/_refs/NDS/Research/Antialiasing/T.bin");
-    auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
+    // auto dataB = readFile("E:/Development/_refs/NDS/Research/Antialiasing/B.bin");
 
     if (dataT)
         test(*dataT);
-    if (dataB)
-        test(*dataB);
+    // if (dataB)
+    //     test(*dataB);
 
     // if (dataT) writeImages(*dataT, "E:/Development/_refs/NDS/Research/Antialiasing/T");
     // if (dataB) writeImages(*dataB, "E:/Development/_refs/NDS/Research/Antialiasing/B");
@@ -721,7 +721,7 @@ int main5() {
     dataPoints.push_back({{0, 0, 6, 2, 160}, 170, true, true});
     dataPoints.push_back({{3, 1, 6, 2, 160}, 170, true, true});*/
 
-    dataPoints.push_back({{0, 0, 186, 185, 480}, 511, true, true});
+    /*dataPoints.push_back({{0, 0, 186, 185, 480}, 511, true, true});
     dataPoints.push_back({{1, 1, 186, 185, 480}, 511, true, true});
     dataPoints.push_back({{2, 2, 186, 185, 480}, 511, true, true});
     dataPoints.push_back({{3, 3, 186, 185, 480}, 511, true, true});
@@ -905,10 +905,10 @@ int main5() {
     dataPoints.push_back({{181, 182, 186, 185, 512}, 543, true, true});
     dataPoints.push_back({{182, 183, 186, 185, 512}, 543, true, true});
     dataPoints.push_back({{183, 184, 186, 185, 512}, 543, true, true});
-    dataPoints.push_back({{184, 185, 186, 185, 512}, 543, true, true});
+    dataPoints.push_back({{184, 185, 186, 185, 512}, 543, true, true});*/
 
     // Off-by-one errors (0 or negative=ok, positive=off-by-one)
-    /*constexpr auto minValue = std::numeric_limits<i32>::min();
+    constexpr auto minValue = std::numeric_limits<i32>::min();
     constexpr auto maxValue = std::numeric_limits<i32>::max();
     dataPoints.push_back({{0, 0, 114, 2, minValue}, 0, true, true});
     dataPoints.push_back({{0, 0, 147, 2, minValue}, 0, true, true});
@@ -1095,7 +1095,7 @@ int main5() {
     dataPoints.push_back({{94, 2, 235, 5, 1}, maxValue, true, true});
     dataPoints.push_back({{95, 84, 217, 191, 1}, maxValue, true, true});
     dataPoints.push_back({{98, 3, 163, 5, 1}, maxValue, true, true});
-    dataPoints.push_back({{98, 97, 191, 189, 1}, maxValue, true, true});*/
+    dataPoints.push_back({{98, 97, 191, 189, 1}, maxValue, true, true});
 
     for (auto &dp : dataPoints) {
         if (dp.positive) {

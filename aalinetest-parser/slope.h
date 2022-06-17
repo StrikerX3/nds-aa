@@ -412,7 +412,7 @@ public:
             const i32 xOffsetOrigin = m_negative ? startX - (m_x0 - m_width) : startX - m_x0;
             const i32 xOffsetSegment = x - startX;
             i32 coverageBias = (((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width)) % kAAFracRange;
-            if (!m_negative && coverageBias > m_covStep && startX != endX) {
+            if (!m_negative && coverageBias + m_covStep >= kAAFracRange && startX != endX) {
                 coverageBias ^= Slope::kAAFracRange - 1;
             }
             const i32 fracCoverage = xOffsetSegment * m_covStep;
