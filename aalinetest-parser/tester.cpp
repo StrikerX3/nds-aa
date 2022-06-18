@@ -75,14 +75,14 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     adjustY(rbStartY, rbEndY);
 
     // Dump gradients from the data set
-    auto dumpGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
+    /*auto dumpGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
         // Avoid division by zero.
         // Also, we're not interested in perfectly vertical or horizontal edges; those are solved already.
         if (slope.Width() == 0 || slope.Height() == 0) {
             return;
         }
 
-        const i32 gradFlip = (slope.IsLeftEdge() == (slope.IsNegative() == slope.IsXMajor())) ? 31 : 0;
+        const i32 gradFlip = slope.IsCoverageInverted() * 31;
         const i32 aaStep = slope.IsXMajor() //
                                ? slope.Height() * 1024 / slope.Width()
                                : slope.Width() * 1024 / slope.Height();
@@ -99,6 +99,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 i32 startX = slope.XStart(y);
                 i32 endX = slope.XEnd(y);
                 bool flipped = (startX > endX);
+                // i32 xInc = flipped ? -1 : +1;
                 if (flipped) {
                     std::swap(startX, endX);
                 }
@@ -122,12 +123,8 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 i32 baseCoverage = 0;
                 auto &line = data.lines[targetY][targetX];
 
-                auto aaCovLower = [&] {
-                    return std::min((baseCoverage + biasLowerBound) >> 5, 31) ^ gradFlip ^ (flipped * 31);
-                };
-                auto aaCovUpper = [&] {
-                    return std::min((baseCoverage + biasUpperBound) >> 5, 31) ^ gradFlip ^ (flipped * 31);
-                };
+                auto aaCovLower = [&] { return std::min((baseCoverage + biasLowerBound) >> 5, 31) ^ gradFlip; };
+                auto aaCovUpper = [&] { return std::min((baseCoverage + biasUpperBound) >> 5, 31) ^ gradFlip; };
 
                 // Do a forward scan to find the lower bound
                 for (i32 x = startX; x <= endX; x++) {
@@ -165,19 +162,17 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 // Calculate gradient using current formula
                 const i32 slopeStartX = slope.IsNegative() ? slope.XEnd(y) : slope.XStart(y);
                 const i32 slopeEndX = slope.IsNegative() ? slope.XStart(y) : slope.XEnd(y);
-                const i32 xOffsetOrigin =
-                    slope.IsNegative() ? slopeStartX - (slope.X0() - slope.Width()) : slopeStartX - slope.X0();
+                const i32 xOffsetOrigin = slope.IsNegative() ? slope.X0() - 1 - slopeStartX : slopeStartX - slope.X0();
                 i32 coverageBias =
                     ((((2 * xOffsetOrigin + 1) * slope.Height() * Slope::kAAFracRange) / (2 * slope.Width())) %
                      Slope::kAAFracRange);
-                // if (slope.IsNegative()) {
-                //     coverageBias ^= Slope::kAAFracRange - 1;
-                // }
-                if (slope.IsPositive() && coverageBias + slope.AACoverageStep() >= Slope::kAAFracRange &&
+                if (slope.IsNegative()) {
+                    coverageBias ^= Slope::kAAFracRange - 1;
+                }
+                if (coverageBias + slope.AACoverageStep() >= (Slope::kAAFracRange + slope.IsNegative()) &&
                     slopeStartX != slopeEndX) {
                     coverageBias ^= Slope::kAAFracRange - 1;
                 }
-
                 bool match = (coverageBias >= biasLowerBound) && (coverageBias <= biasUpperBound);
 
                 u64 delta;
@@ -194,45 +189,45 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 }
 
                 // Display gradient
-                // if (!match) {
                 // if (true) {
                 // if (!match && delta > 1) { // discontinuities
-                if (!match && delta == 1) { // off-by-one errors
-                    // std::cout << slope.Width() << ";" << slope.Height() << ';' //
-                    //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
-                    //           << (slope.IsPositive() ? 'P' : 'N')              //
-                    //           << (slope.IsXMajor() ? 'X' : 'Y')                //
-                    //           << ';' << y << ';';
+                // if (!match && delta == 1) { // off-by-one errors
+                // if (!match) { // any errors
+                // std::cout << slope.Width() << ";" << slope.Height() << ';' //
+                //           << (slope.IsLeftEdge() ? 'L' : 'R')              //
+                //           << (slope.IsPositive() ? 'P' : 'N')              //
+                //           << (slope.IsXMajor() ? 'X' : 'Y')                //
+                //           << ';' << y << ';';
 
-                    std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left
-                              << slope.Height();
-                    std::cout << "   "                            //
-                              << (slope.IsLeftEdge() ? 'L' : 'R') //
-                              << (slope.IsPositive() ? 'P' : 'N') //
-                              << (slope.IsXMajor() ? 'X' : 'Y');  //
-                    std::cout << "    y=" << std::setw(3) << std::left << y;
-                    std::cout << "   x=" << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left
-                              << endX;
-                    std::cout << " -> ";
-                    if (biasLowerBound >= 1024) {
-                        // std::cout << ';';
-                        std::cout << "(unexpected gradient)";
-                    } else {
-                        // std::cout << biasLowerBound << ';' << biasUpperBound;
-                        std::cout << std::setw(4) << std::right << biasLowerBound;
-                        if (biasLowerBound != biasUpperBound) {
-                            std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
-                        } else {
-                            std::cout << "      ";
-                        }
-                    }
-                    std::cout << (match ? " == " : " != ") << coverageBias;
-                    // std::cout << "  ";
-                    // for (i32 x = startX; x <= endX; x++) {
-                    //     std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
-                    // }
-                    std::cout << '\n';
+                std::cout << std::setw(3) << std::right << slope.Width() << 'x' << std::setw(3) << std::left
+                          << slope.Height();
+                std::cout << "   "                            //
+                          << (slope.IsLeftEdge() ? 'L' : 'R') //
+                          << (slope.IsPositive() ? 'P' : 'N') //
+                          << (slope.IsXMajor() ? 'X' : 'Y');  //
+                std::cout << "    y=" << std::setw(3) << std::left << y;
+                std::cout << "   x=" << std::setw(3) << std::right << startX << ".." << std::setw(3) << std::left
+                          << endX;
+                std::cout << " -> ";
+                if (biasLowerBound >= 1024) {
+                    // std::cout << ';';
+                    std::cout << "(unexpected gradient)";
+                } else {
+                    // std::cout << biasLowerBound << ';' << biasUpperBound;
+                    std::cout << std::setw(4) << std::right << biasLowerBound;
+                    // if (biasLowerBound != biasUpperBound) {
+                    std::cout << ".." << std::setw(4) << std::left << biasUpperBound;
+                    //} else {
+                    //    std::cout << "      ";
+                    //}
                 }
+                std::cout << (match ? " == " : " != ") << coverageBias;
+                // std::cout << "  ";
+                // for (i32 x = startX; x <= endX; x++) {
+                //     std::cout << " " << std::setw(2) << std::right << (u32)line.Pixel(x, y);
+                // }
+                std::cout << '\n';
+                //}
             }
         } else { // Y-major or diagonal
             i32 lastX = -1;
@@ -342,8 +337,8 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
             }
         }
     };
-    dumpGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
-    // dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);
+    // dumpGradient(ltSlope, ltTargetX, ltTargetY, ltStartY, ltEndY);
+    dumpGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);*/
 
     // Generate X-major gradients using the new bias method and compare against the data set
     /*auto calcGradient = [&](Slope &slope, i32 targetX, i32 targetY, i32 startY, i32 endY) {
@@ -459,7 +454,7 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
     calcGradient(rbSlope, rbTargetX, rbTargetY, rbStartY, rbEndY);*/
 
     // Generate slopes and check the coverage values
-    /*auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY, i32 startY, i32 endY) {
+    auto calcSlope = [&](const Slope &slope, std::string slopeName, i32 testX, i32 testY, i32 startY, i32 endY) {
         for (i32 y = startY; y < endY; y++) {
             i32 startX = slope.XStart(y);
             i32 endX = slope.XEnd(y);
@@ -502,28 +497,32 @@ void testSlope(const Data &data, i32 slopeWidth, i32 slopeHeight, TestResult &re
                 } else if (coverage < pixel) {
                     result.undershoot += pixel - coverage;
                 }
-                if (coverage != pixel) {
+                /*if (coverage != pixel) {
                     const auto w = slopeWidth;
                     const auto h = slopeHeight;
-                    std::cout << std::setw(3) << std::right << w << 'x' << std::setw(3) << std::left << h          //
-                              << " @ " << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
-                              << "  " << slopeName << ": "                                                         //
-                              << std::setw(2) << std::right << coverage << ((coverage == pixel) ? " == " : " != ") //
-                              << std::setw(2) << (u32)pixel                                                        //
-                              << "  (" << std::setw(4) << fracCoverage << "  "                                     //
-                              << std::setw(2) << std::right << (fracCoverage >> aaFracBits) << '.' << std::setw(2) //
-                              << std::left << (fracCoverage & ((1 << aaFracBits) - 1)) << ')'                      //
-                              << "   "                                                                             //
-                              << (slope.IsLeftEdge() ? 'L' : 'R')                                                  //
-                              << (slope.IsPositive() ? 'P' : 'N')                                                  //
-                              << (slope.IsXMajor() ? 'X' : 'Y')                                                    //
+                    std::cout << std::setw(3) << std::right << w << 'x' << std::setw(3) << std::left << h //
+                              << " @ "                                                                    //
+                              << std::setw(3) << std::right << x << 'x' << std::setw(3) << std::left << y //
+                              << "  " << slopeName << ": "                                                //
+                              << std::setw(2) << std::right << coverage                                   //
+                              << ((coverage == pixel) ? " == " : " != ")                                  //
+                              << std::setw(2) << (u32)pixel                                               //
+                              << "  ("                                                                    //
+                              << std::setw(4) << fracCoverage << "  "                                     //
+                              << std::setw(2) << std::right << (fracCoverage >> aaFracBits)               //
+                              << '.' << std::setw(2)                                                      //
+                              << std::left << (fracCoverage & ((1 << aaFracBits) - 1))                    //
+                              << ")   "                                                                   //
+                              << (slope.IsLeftEdge() ? 'L' : 'R')                                         //
+                              << (slope.IsPositive() ? 'P' : 'N')                                         //
+                              << (slope.IsXMajor() ? 'X' : 'Y')                                           //
                               << '\n';
-                }
+                }*/
             }
         }
     };
-    calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
-    //calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);*/
+    // calcSlope(ltSlope, "LT", ltTargetX, ltTargetY, ltStartY, ltEndY);
+    calcSlope(rbSlope, "RB", rbTargetX, rbTargetY, rbStartY, rbEndY);
 }
 
 void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
@@ -558,48 +557,47 @@ void testSlopes(Data &data, i32 x0, i32 y0, const char *name) {
         testSlope(data, i, i, result);
     }*/
 
-    // testSlope(data, 224, 58, result);
-    // testSlope(data, 8, 7, result);
-    // testSlope(data, 67, 8, result);
-    // testSlope(data, 68, 8, result);
-    // testSlope(data, 69, 8, result);
-    // testSlope(data, 67, 9, result);
-    // testSlope(data, 68, 9, result);
-    // testSlope(data, 69, 9, result);
-    /*for (i32 i = 1; i <= 256 / 19; i++) {
-        testSlope(data, 19 * i, i, result);
-    }*/
-    /*for (i32 i = 1; i <= 256 / 27; i++) {
-        testSlope(data, 27 * i, i, result);
-    }*/
-    /*for (i32 i = 1; i <= 256 / 57; i++) {
-        testSlope(data, 57 * i, i, result);
-    }*/
-    /*for (i32 i = 2; i <= 512 / 25; i += 2) {
-        testSlope(data, (25 * i) / 2, i, result);
-    }*/
-    // testSlope(data, 147, 2, result);
-    // testSlope(data, 8, 1, result);
-    // testSlope(data, 175, 32, result);
-    // testSlope(data, 2, 1, result);
-    // testSlope(data, 54, 2, result);
-    // testSlope(data, 56, 2, result);
-    // testSlope(data, 57, 3, result);
-    // testSlope(data, 60, 3, result);
-    // testSlope(data, 62, 3, result);
-    // testSlope(data, 150, 12, result);
-    // testSlope(data, 250, 20, result);
-    // testSlope(data, 55, 2, result);
-    // testSlope(data, 103, 3, result);
-    // testSlope(data, 233, 34, result);
-    // testSlope(data, 186, 185, result);
-    // testSlope(data, 66, 37, result);
-    // testSlope(data, 98, 93, result);
-    // testSlope(data, 153, 35, result);
-    // testSlope(data, 245, 192, result);
-    // testSlope(data, 255, 192, result);
-    // testSlope(data, 161, 101, result);
-    // testSlope(data, 217, 190, result);
+    // testSlope(data, 9, 6, result);
+    // testSlope(data, 250, 8, result);
+
+    /*testSlope(data, 54, 2, result);
+    testSlope(data, 4, 3, result);
+    testSlope(data, 114, 2, result);
+    testSlope(data, 147, 2, result);
+    testSlope(data, 57, 3, result);
+    testSlope(data, 95, 5, result);
+    testSlope(data, 114, 6, result);
+    testSlope(data, 171, 9, result);
+    testSlope(data, 228, 12, result);
+    testSlope(data, 247, 13, result);
+    testSlope(data, 50, 4, result);
+    testSlope(data, 100, 8, result);
+    testSlope(data, 150, 12, result);
+    testSlope(data, 200, 16, result);
+    testSlope(data, 250, 20, result);
+    testSlope(data, 135, 5, result);
+    testSlope(data, 186, 185, result);
+    testSlope(data, 245, 192, result);
+    testSlope(data, 255, 192, result);
+    testSlope(data, 143, 12, result);
+    testSlope(data, 250, 10, result);
+    testSlope(data, 75, 6, result);
+    testSlope(data, 65, 6, result);
+    testSlope(data, 2, 1, result);
+    testSlope(data, 8, 2, result);
+    testSlope(data, 9, 2, result);
+    testSlope(data, 153, 35, result);
+    testSlope(data, 117, 37, result);
+    testSlope(data, 66, 37, result);
+    testSlope(data, 217, 190, result);
+    testSlope(data, 8, 7, result);
+    testSlope(data, 224, 58, result);
+    testSlope(data, 67, 8, result);
+    testSlope(data, 68, 8, result);
+    testSlope(data, 69, 8, result);
+    testSlope(data, 67, 9, result);
+    testSlope(data, 68, 9, result);
+    testSlope(data, 69, 9, result);*/
 
     if (!result.mismatch) {
         std::cout << "OK!\n";

@@ -400,23 +400,21 @@ public:
 
             const i32 startX = m_negative ? XEnd(y) : XStart(y);
             const i32 endX = m_negative ? XStart(y) : XEnd(y);
-            const i32 xOffsetOrigin = m_negative ? startX - (m_x0 - m_width) : startX - m_x0;
+            const i32 xOffsetOrigin = m_negative ? m_x0 - 1 - startX : startX - m_x0;
             const i32 xOffsetSegment = x - startX;
             i32 coverageBias = (((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width)) % kAAFracRange;
-            if (!m_negative && coverageBias + m_covStep >= kAAFracRange && startX != endX) {
+            if (m_negative || (coverageBias + m_covStep >= kAAFracRange && startX != endX)) {
                 coverageBias ^= Slope::kAAFracRange - 1;
             }
             const i32 fracCoverage = xOffsetSegment * m_covStep;
             const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
 
-            /*std::cout << "startX=" << std::setw(3) << std::left << startX                                     //
-                      << "  fxs=" << std::setw(10) << std::left << (m_negative ? FracXEnd(y) : FracXStart(y)) //
-                      << "  xofs_origin=" << std::setw(3) << std::left << xOffsetOrigin                       //
-                      << "  xofs_segment=" << std::setw(4) << std::left << xOffsetSegment                     //
-                      << "  step=" << std::setw(4) << std::left << m_covStep                                  //
-                      << "  bias=" << std::setw(6) << std::left << coverageBias                               //
-                      << "  adj1=" << m_covAdjust1                                                            //
-                      << "  adj2=" << m_covAdjust2                                                            //
+            /*std::cout << "startX=" << std::setw(3) << std::left << startX            //
+                      << "  x0=" << std::setw(3) << std::left << m_x0                //
+                      << "  xOfsOrig=" << std::setw(3) << std::left << xOffsetOrigin //
+                      << "  xOfsSeg=" << std::setw(4) << std::left << xOffsetSegment //
+                      << "  bias=" << std::setw(6) << std::left << coverageBias      //
+                      << "  step=" << std::setw(4) << std::left << m_covStep         //
                       << "   ";*/
             return invertGradient(finalCoverage);
         } else {
