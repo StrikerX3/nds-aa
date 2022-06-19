@@ -394,29 +394,48 @@ public:
         }
 
         if (m_xMajor) {
-            // TODO: fix off-by-one errors in positive slopes
-            // - Coverage bias is slightly off in 7676 cases
+            // TODO: fix off-by-one errors in positive slopes (7676 cases)
             // TODO: fix negative slopes
+            // TODO: consolidate negative and positive slope formulae
 
-            const i32 startX = m_negative ? XEnd(y) : XStart(y);
-            const i32 endX = m_negative ? XStart(y) : XEnd(y);
-            const i32 xOffsetOrigin = m_negative ? m_x0 - 1 - startX : startX - m_x0;
-            const i32 xOffsetSegment = x - startX;
-            i32 coverageBias = (((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width)) % kAAFracRange;
-            if (m_negative || (coverageBias + m_covStep >= kAAFracRange && startX != endX)) {
+            if (m_negative) {
+                const i32 startX = XEnd(y);
+                const i32 xOffsetOrigin = m_x0 - 1 - startX;
+                const i32 xOffsetSegment = x - startX;
+                i32 coverageBias = (((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width)) % kAAFracRange;
                 coverageBias ^= Slope::kAAFracRange - 1;
-            }
-            const i32 fracCoverage = xOffsetSegment * m_covStep;
-            const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
+                const i32 fracCoverage = xOffsetSegment * m_covStep;
+                const i32 finalCoverage = (fracCoverage + coverageBias) % kAAFracRange;
 
-            /*std::cout << "startX=" << std::setw(3) << std::left << startX            //
-                      << "  x0=" << std::setw(3) << std::left << m_x0                //
-                      << "  xOfsOrig=" << std::setw(3) << std::left << xOffsetOrigin //
-                      << "  xOfsSeg=" << std::setw(4) << std::left << xOffsetSegment //
-                      << "  bias=" << std::setw(6) << std::left << coverageBias      //
-                      << "  step=" << std::setw(4) << std::left << m_covStep         //
-                      << "   ";*/
-            return invertGradient(finalCoverage);
+                /*std::cout << "startX=" << std::setw(3) << std::left << startX            //
+                          << "  x0=" << std::setw(3) << std::left << m_x0                //
+                          << "  xOfsOrig=" << std::setw(3) << std::left << xOffsetOrigin //
+                          << "  xOfsSeg=" << std::setw(4) << std::left << xOffsetSegment //
+                          << "  bias=" << std::setw(6) << std::left << coverageBias      //
+                          << "  step=" << std::setw(4) << std::left << m_covStep         //
+                          << "   ";*/
+                return finalCoverage ^ (kAAFracRange - 1);
+            } else {
+                const i32 startX = XStart(y);
+                const i32 endX = XEnd(y);
+                const i32 xOffsetOrigin = startX - m_x0;
+                const i32 xOffsetSegment = x - startX;
+                i32 coverageBias = (((2 * xOffsetOrigin + 1) * m_height * kAAFracRange) / (2 * m_width)) % kAAFracRange;
+                if (coverageBias + m_covStep >= kAAFracRange && startX != endX) {
+                    coverageBias ^= Slope::kAAFracRange - 1;
+                }
+                const i32 fracCoverage = xOffsetSegment * m_covStep;
+                const i32 finalCoverage = (coverageBias + fracCoverage) % kAAFracRange;
+
+                /*std::cout << "startX=" << std::setw(3) << std::left << startX            //
+                          << "  x0=" << std::setw(3) << std::left << m_x0                //
+                          << "  xOfsOrig=" << std::setw(3) << std::left << xOffsetOrigin //
+                          << "  xOfsSeg=" << std::setw(4) << std::left << xOffsetSegment //
+                          << "  bias=" << std::setw(6) << std::left << coverageBias      //
+                          << "  step=" << std::setw(4) << std::left << m_covStep         //
+                          << "   ";*/
+                return finalCoverage;
+            }
         } else {
             const i32 fxs = (m_negative ? kOne - FracXStart(y) - 1 : FracXStart(y)) % kOne;
             const i32 baseCoverage = (fxs & kMask) >> 8;
